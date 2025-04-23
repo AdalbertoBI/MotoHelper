@@ -2,6 +2,7 @@ let mapa;
 let mapaPostos;
 let rotaLayer;
 let paradasCount = 1;
+let ultimaBusca = 0; // Para evitar múltiplas requisições rápidas (debounce)
 
 document.addEventListener('DOMContentLoaded', () => {
     mapa = L.map('mapa').setView([-23.5505, -46.6333], 13);
@@ -9,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     mapaPostos = L.map('mapaPostos');
     carregarGastos();
     carregarKmPorLitro();
-    carregarEnderecosSalvos();
 
     const btnAdicionarParada = document.getElementById('btnAdicionarParada');
     if (btnAdicionarParada) {
@@ -27,15 +27,53 @@ function adicionarParada() {
     novaParada.id = `parada${paradasCount}`;
     novaParada.placeholder = `Parada ${paradasCount} (opcional)`;
     novaParada.className = 'form-control mb-2';
-    novaParada.setAttribute('list', 'enderecosSalvos');
+    novaParada.setAttribute('list', `sugestoesParada${paradasCount}`);
+    novaParada.setAttribute('oninput', `buscarSugestoes('parada${paradasCount}', 'sugestoesParada${paradasCount}')`);
+    const novaDatalist = document.createElement('datalist');
+    novaDatalist.id = `sugestoesParada${paradasCount}`;
     paradasDiv.appendChild(novaParada);
+    paradasDiv.appendChild(novaDatalist);
+}
+
+async function buscarSugestoes(inputId, datalistId) {
+    const agora = Date.now();
+    if (agora - ultimaBusca < 500) return; // Debounce: espera 500ms entre requisições
+    ultimaBusca = agora;
+
+    const endereco = document.getElementById(inputId).value;
+    if (!endereco || endereco.length < 3) {
+        document.getElementById(datalistId).innerHTML = '';
+        return;
+    }
+
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=5`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Erro na busca de sugestões: ${res.status} - ${res.statusText}`);
+        }
+        const data = await res.json();
+        const datalist = document.getElementById(datalistId);
+        datalist.innerHTML = '';
+        data.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.display_name;
+            datalist.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao buscar sugestões:', error);
+        alert("Não foi possível buscar sugestões de endereço. Verifique sua conexão e tente novamente.");
+    }
 }
 
 async function geocodificar(endereco) {
     if (!endereco) return null;
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1`;
         const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Erro na geocodificação: ${res.status} - ${res.statusText}`);
+        }
         const data = await res.json();
         if (data.length > 0) {
             return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
@@ -43,7 +81,7 @@ async function geocodificar(endereco) {
         return null;
     } catch (error) {
         console.error('Erro na geocodificação:', error);
-        return null;
+        throw new Error("Não foi possível geocodificar o endereço. Tente usar uma sugestão da lista ou verifique sua conexão.");
     }
 }
 
@@ -65,31 +103,30 @@ async function calcularRota() {
         return;
     }
 
-    salvarEndereco(origem);
-    paradas.forEach(salvarEndereco);
-    salvarEndereco(destino);
-    carregarEnderecosSalvos();
-
-    const coordsOrigem = await geocodificar(origem);
-    const coordsDestino = await geocodificar(destino);
-    const coordsParadas = await Promise.all(paradas.map(geocodificar));
-    if (!coordsOrigem || !coordsDestino || coordsParadas.includes(null)) {
-        alert("Não foi possível encontrar algum endereço. Verifique os dados e tente novamente.");
-        return;
-    }
-
-    const coords = [coordsOrigem, ...coordsParadas, coordsDestino];
-
-    const apiKey = '5b3ce3597851110001cf62488d59f67c5c15452c92c89eb27e1004c6';
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}`;
-    const body = {
-        coordinates: coords,
-        units: 'km',
-        instructions: true, // Adiciona instruções de navegação
-        extra_info: ['waytype'], // Adiciona informações sobre o tipo de estrada
-    };
-
     try {
+        const coordsOrigem = await geocodificar(origem);
+        const coordsDestino = await geocodificar(destino);
+        const coordsParadas = await Promise.all(paradas.map(async (parada) => {
+            const coords = await geocodificar(parada);
+            if (!coords) throw new Error(`Endereço inválido: ${parada}`);
+            return coords;
+        }));
+
+        if (!coordsOrigem || !coordsDestino || coordsParadas.includes(null)) {
+            throw new Error("Um ou mais endereços não foram encontrados. Use as sugestões da lista.");
+        }
+
+        const coords = [coordsOrigem, ...coordsParadas, coordsDestino];
+
+        const apiKey = '5b3ce3597851110001cf62488d59f67c5c15452c92c89eb27e1004c6';
+        const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}`;
+        const body = {
+            coordinates: coords,
+            units: 'km',
+            instructions: true,
+            extra_info: ['waytype'],
+        };
+
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -97,7 +134,8 @@ async function calcularRota() {
         });
 
         if (!res.ok) {
-            throw new Error(`Erro na API: ${res.status} - ${res.statusText}`);
+            const errorText = await res.text();
+            throw new Error(`Erro na API OpenRouteService: ${res.status} - ${errorText}`);
         }
 
         const data = await res.json();
@@ -115,7 +153,6 @@ async function calcularRota() {
             let resultado = `Distância: ${distancia.toFixed(2)} km<br>` +
                            (kmPorLitro > 0 ? `Combustível estimado: ${litros.toFixed(2)} litros<br>` : 'Defina o km/litro na aba Gastos.<br>');
 
-            // Adiciona informações sobre o tipo de estrada
             const waytypes = data.features[0].properties.extras.waytype;
             if (waytypes) {
                 resultado += '<b>Tipos de estrada:</b><br>';
@@ -127,7 +164,6 @@ async function calcularRota() {
 
             document.getElementById('resultadoRota').innerHTML = resultado;
 
-            // Adiciona instruções de navegação
             const instrucoesDiv = document.getElementById('instrucoesRota');
             instrucoesDiv.innerHTML = '<b>Instruções de Navegação:</b><br>';
             const instrucoes = data.features[0].properties.segments[0].steps || [];
@@ -137,32 +173,12 @@ async function calcularRota() {
                 instrucoesDiv.appendChild(li);
             });
         } else {
-            alert("Não foi possível calcular a rota. Verifique sua conexão ou tente outros endereços.");
+            throw new Error("Nenhuma rota encontrada. Verifique os endereços ou tente outro trajeto.");
         }
     } catch (error) {
         console.error('Erro ao calcular a rota:', error);
-        alert("Erro ao calcular a rota: " + error.message + ". Verifique sua conexão ou a chave API.");
+        alert(`Erro: ${error.message}\nSugestão: Use os endereços sugeridos pela lista de autocompletar.`);
     }
-}
-
-function salvarEndereco(endereco) {
-    if (!endereco) return;
-    const enderecos = JSON.parse(localStorage.getItem('enderecos') || '[]');
-    if (!enderecos.includes(endereco)) {
-        enderecos.push(endereco);
-        localStorage.setItem('enderecos', JSON.stringify(enderecos));
-    }
-}
-
-function carregarEnderecosSalvos() {
-    const enderecos = JSON.parse(localStorage.getItem('enderecos') || '[]');
-    const datalist = document.getElementById('enderecosSalvos');
-    datalist.innerHTML = '';
-    enderecos.forEach(end => {
-        const option = document.createElement('option');
-        option.value = end;
-        datalist.appendChild(option);
-    });
 }
 
 function calcularFrete() {

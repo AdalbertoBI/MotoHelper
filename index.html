@@ -29,17 +29,19 @@
             <!-- Aba 1: Rotas (OpenStreetMap) -->
             <div class="tab-pane fade show active" id="rotas">
                 <h4>Otimizador de Rotas</h4>
-                <input type="text" id="origem" placeholder="Origem" class="form-control mb-2" list="enderecosSalvos">
+                <input type="text" id="origem" placeholder="Origem" class="form-control mb-2" list="sugestoesOrigem" oninput="buscarSugestoes('origem', 'sugestoesOrigem')">
+                <datalist id="sugestoesOrigem"></datalist>
                 <div id="paradas">
-                    <input type="text" id="parada1" placeholder="Parada 1 (opcional)" class="form-control mb-2" list="enderecosSalvos">
+                    <input type="text" id="parada1" placeholder="Parada 1 (opcional)" class="form-control mb-2" list="sugestoesParada1" oninput="buscarSugestoes('parada1', 'sugestoesParada1')">
+                    <datalist id="sugestoesParada1"></datalist>
                 </div>
                 <button id="btnAdicionarParada" class="btn btn-secondary mb-2">Adicionar Parada</button>
-                <input type="text" id="destino" placeholder="Destino" class="form-control mb-2" list="enderecosSalvos">
+                <input type="text" id="destino" placeholder="Destino" class="form-control mb-2" list="sugestoesDestino" oninput="buscarSugestoes('destino', 'sugestoesDestino')">
+                <datalist id="sugestoesDestino"></datalist>
                 <button onclick="calcularRota()" class="btn btn-primary">Buscar Rota</button>
                 <p id="resultadoRota"></p>
                 <div id="instrucoesRota" class="mt-2"></div>
                 <div id="mapa" style="height: 300px;"></div>
-                <datalist id="enderecosSalvos"></datalist>
             </div>
 
             <!-- Aba 2: Fretes -->
