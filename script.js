@@ -1,24 +1,24 @@
-// Mapa OpenStreetMap
 let mapa;
 let mapaPostos;
-let rotaLayer; // Para armazenar a rota no mapa
-let paradasCount = 1; // Contador de paradas
+let rotaLayer;
+let paradasCount = 1;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializa o mapa principal
-    mapa = L.map('mapa').setView([-23.5505, -46.6333], 13); // São Paulo como centro
+    mapa = L.map('mapa').setView([-23.5505, -46.6333], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
-
-    // Inicializa o mapa de postos (vazio até clicar em "Buscar Postos")
     mapaPostos = L.map('mapaPostos');
-
-    // Carrega gastos e km/litro salvos
     carregarGastos();
     carregarKmPorLitro();
     carregarEnderecosSalvos();
+
+    const btnAdicionarParada = document.getElementById('btnAdicionarParada');
+    if (btnAdicionarParada) {
+        btnAdicionarParada.addEventListener('click', adicionarParada);
+    } else {
+        console.error('Botão "Adicionar Parada" não encontrado!');
+    }
 });
 
-// Função para adicionar mais paradas
 function adicionarParada() {
     paradasCount++;
     const paradasDiv = document.getElementById('paradas');
@@ -31,21 +31,23 @@ function adicionarParada() {
     paradasDiv.appendChild(novaParada);
 }
 
-// Função para converter endereço em coordenadas (usando Nominatim)
 async function geocodificar(endereco) {
     if (!endereco) return null;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.length > 0) {
-        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.length > 0) {
+            return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro na geocodificação:', error);
+        return null;
     }
-    return null;
 }
 
-// Função para calcular a rota
 async function calcularRota() {
-    // Limpa a rota anterior, se existir
     if (rotaLayer) {
         mapa.removeLayer(rotaLayer);
     }
@@ -63,61 +65,86 @@ async function calcularRota() {
         return;
     }
 
-    // Salva os endereços pesquisados
     salvarEndereco(origem);
     paradas.forEach(salvarEndereco);
     salvarEndereco(destino);
     carregarEnderecosSalvos();
 
-    // Converte todos os endereços em coordenadas
     const coordsOrigem = await geocodificar(origem);
     const coordsDestino = await geocodificar(destino);
     const coordsParadas = await Promise.all(paradas.map(geocodificar));
     if (!coordsOrigem || !coordsDestino || coordsParadas.includes(null)) {
-        alert("Não foi possível encontrar algum endereço. Verifique os dados.");
+        alert("Não foi possível encontrar algum endereço. Verifique os dados e tente novamente.");
         return;
     }
 
-    // Monta a lista de coordenadas para a API OpenRouteService
     const coords = [coordsOrigem, ...coordsParadas, coordsDestino];
 
-    // Chave da API OpenRouteService (você precisa se registrar para obter uma chave gratuita)
-    const apiKey = '5b3ce3597851110001cf62488d59f67c5c15452c92c89eb27e1004c6'; // Substitua por sua chave gratuita de https://openrouteservice.org/
+    const apiKey = '5b3ce3597851110001cf62488d59f67c5c15452c92c89eb27e1004c6';
     const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}`;
     const body = {
         coordinates: coords,
-        units: 'km'
+        units: 'km',
+        instructions: true, // Adiciona instruções de navegação
+        extra_info: ['waytype'], // Adiciona informações sobre o tipo de estrada
     };
 
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-    const data = await res.json();
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
 
-    if (data.features && data.features.length > 0) {
-        const distancia = data.features[0].properties.segments.reduce((sum, seg) => sum + seg.distance, 0);
-        const geometry = data.features[0].geometry.coordinates;
+        if (!res.ok) {
+            throw new Error(`Erro na API: ${res.status} - ${res.statusText}`);
+        }
 
-        // Desenha a rota no mapa
-        const polyline = L.polyline(geometry.map(coord => [coord[1], coord[0]]), { color: 'blue' }).addTo(mapa);
-        mapa.fitBounds(polyline.getBounds());
-        rotaLayer = polyline;
+        const data = await res.json();
 
-        // Calcula o consumo de combustível
-        const kmPorLitro = parseFloat(localStorage.getItem('kmPorLitro')) || 0;
-        const litros = kmPorLitro > 0 ? distancia / kmPorLitro : 0;
-        const resultado = `Distância: ${distancia.toFixed(2)} km<br>` +
-                         (kmPorLitro > 0 ? `Combustível estimado: ${litros.toFixed(2)} litros` : 'Defina o km/litro na aba Gastos.');
+        if (data.features && data.features.length > 0) {
+            const distancia = data.features[0].properties.segments.reduce((sum, seg) => sum + seg.distance, 0);
+            const geometry = data.features[0].geometry.coordinates;
 
-        document.getElementById('resultadoRota').innerHTML = resultado;
-    } else {
-        alert("Não foi possível calcular a rota.");
+            const polyline = L.polyline(geometry.map(coord => [coord[1], coord[0]]), { color: 'blue' }).addTo(mapa);
+            mapa.fitBounds(polyline.getBounds());
+            rotaLayer = polyline;
+
+            const kmPorLitro = parseFloat(localStorage.getItem('kmPorLitro')) || 0;
+            const litros = kmPorLitro > 0 ? distancia / kmPorLitro : 0;
+            let resultado = `Distância: ${distancia.toFixed(2)} km<br>` +
+                           (kmPorLitro > 0 ? `Combustível estimado: ${litros.toFixed(2)} litros<br>` : 'Defina o km/litro na aba Gastos.<br>');
+
+            // Adiciona informações sobre o tipo de estrada
+            const waytypes = data.features[0].properties.extras.waytype;
+            if (waytypes) {
+                resultado += '<b>Tipos de estrada:</b><br>';
+                waytypes.values.forEach(val => {
+                    const [start, end, type] = val;
+                    resultado += `- Segmento ${start}-${end}: ${type}<br>`;
+                });
+            }
+
+            document.getElementById('resultadoRota').innerHTML = resultado;
+
+            // Adiciona instruções de navegação
+            const instrucoesDiv = document.getElementById('instrucoesRota');
+            instrucoesDiv.innerHTML = '<b>Instruções de Navegação:</b><br>';
+            const instrucoes = data.features[0].properties.segments[0].steps || [];
+            instrucoes.forEach(step => {
+                const li = document.createElement('div');
+                li.textContent = `${step.instruction} (${step.distance} km)`;
+                instrucoesDiv.appendChild(li);
+            });
+        } else {
+            alert("Não foi possível calcular a rota. Verifique sua conexão ou tente outros endereços.");
+        }
+    } catch (error) {
+        console.error('Erro ao calcular a rota:', error);
+        alert("Erro ao calcular a rota: " + error.message + ". Verifique sua conexão ou a chave API.");
     }
 }
 
-// Função para salvar endereços no localStorage
 function salvarEndereco(endereco) {
     if (!endereco) return;
     const enderecos = JSON.parse(localStorage.getItem('enderecos') || '[]');
@@ -127,7 +154,6 @@ function salvarEndereco(endereco) {
     }
 }
 
-// Função para carregar endereços salvos na lista
 function carregarEnderecosSalvos() {
     const enderecos = JSON.parse(localStorage.getItem('enderecos') || '[]');
     const datalist = document.getElementById('enderecosSalvos');
@@ -139,7 +165,6 @@ function carregarEnderecosSalvos() {
     });
 }
 
-// Calculadora de Frete
 function calcularFrete() {
     const km = parseFloat(document.getElementById('km').value);
     const peso = parseFloat(document.getElementById('peso').value);
@@ -147,7 +172,6 @@ function calcularFrete() {
     document.getElementById('resultadoFrete').innerText = `Valor do Frete: R$${valorFrete.toFixed(2)}`;
 }
 
-// Busca postos de gasolina (API Overpass Turbo)
 function buscarPostos() {
     if (!navigator.geolocation) {
         alert("GPS não suportado.");
@@ -158,11 +182,9 @@ function buscarPostos() {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        // Configura o mapa de postos
         mapaPostos.setView([lat, lng], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaPostos);
 
-        // Busca postos via Overpass API
         fetch(`https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="fuel"](around:5000,${lat},${lng});out;`)
             .then(res => res.json())
             .then(data => {
@@ -171,11 +193,9 @@ function buscarPostos() {
                 listaPostos.innerHTML = "";
 
                 postos.forEach(posto => {
-                    // Adiciona marcador no mapa
                     L.marker([posto.lat, posto.lon]).addTo(mapaPostos)
                         .bindPopup(`<b>${posto.tags?.name || "Posto Desconhecido"}</b>`);
 
-                    // Adiciona na lista
                     const li = document.createElement('li');
                     li.textContent = posto.tags?.name || "Posto sem nome";
                     listaPostos.appendChild(li);
@@ -184,7 +204,6 @@ function buscarPostos() {
     });
 }
 
-// Controle de Gastos (LocalStorage)
 function salvarGasto() {
     const tipo = document.getElementById('tipoGasto').value;
     const valor = parseFloat(document.getElementById('valorGasto').value);
@@ -219,7 +238,6 @@ function carregarGastos() {
     document.getElementById('totalGastos').textContent = total.toFixed(2);
 }
 
-// Função para salvar o km/litro
 function salvarKmPorLitro() {
     const kmPorLitro = parseFloat(document.getElementById('kmPorLitro').value);
     if (isNaN(kmPorLitro) || kmPorLitro <= 0) {
@@ -230,13 +248,11 @@ function salvarKmPorLitro() {
     carregarKmPorLitro();
 }
 
-// Função para carregar o km/litro
 function carregarKmPorLitro() {
     const kmPorLitro = localStorage.getItem('kmPorLitro') || '';
     document.getElementById('kmPorLitro').value = kmPorLitro;
 }
 
-// Botão SOS
 function enviarSOS() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
