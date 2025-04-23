@@ -27,13 +27,21 @@
         </ul>
 
         <div class="tab-content">
-            <!-- Aba 1: Rotas (OpenStreetMap) -->
-            <div class="tab-pane fade show active" id="rotas">
-                <h4>Otimizador de Rotas</h4>
-                <input type="text" id="endereco" placeholder="Digite o endereço" class="form-control mb-2">
-                <button onclick="calcularRota()" class="btn btn-primary">Buscar Rota</button>
-                <div id="mapa" style="height: 300px;"></div>
-            </div>
+           <!-- Aba 1: Rotas (OpenStreetMap) -->
+<div class="tab-pane fade show active" id="rotas">
+    <h4>Otimizador de Rotas</h4>
+    <input type="text" id="origem" placeholder="Origem" class="form-control mb-2" list="enderecosSalvos">
+    <div id="paradas">
+        <input type="text" id="parada1" placeholder="Parada 1 (opcional)" class="form-control mb-2" list="enderecosSalvos">
+    </div>
+    <button onclick="adicionarParada()" class="btn btn-secondary mb-2">Adicionar Parada</button>
+    <input type="text" id="destino" placeholder="Destino" class="form-control mb-2" list="enderecosSalvos">
+    <button onclick="calcularRota()" class="btn btn-primary">Buscar Rota</button>
+    <p id="resultadoRota"></p>
+    <div id="mapa" style="height: 300px;"></div>
+    <!-- Lista de endereços salvos -->
+    <datalist id="enderecosSalvos"></datalist>
+</div>
 
             <!-- Aba 2: Fretes -->
             <div class="tab-pane fade" id="fretes">
@@ -52,15 +60,17 @@
                 <ul id="listaPostos" class="mt-2"></ul>
             </div>
 
-            <!-- Aba 4: Controle de Gastos (LocalStorage) -->
-            <div class="tab-pane fade" id="gastos">
-                <h4>Registrar Gastos</h4>
-                <input type="text" id="tipoGasto" placeholder="Ex: Gasolina" class="form-control mb-2">
-                <input type="number" id="valorGasto" placeholder="R$" class="form-control mb-2">
-                <button onclick="salvarGasto()" class="btn btn-success">Salvar</button>
-                <h5 class="mt-3">Total Gasto: R$<span id="totalGastos">0</span></h5>
-                <ul id="listaGastos" class="mt-2"></ul>
-            </div>
+         <!-- Aba 4: Controle de Gastos (LocalStorage) -->
+<div class="tab-pane fade" id="gastos">
+    <h4>Registrar Gastos</h4>
+    <input type="number" id="kmPorLitro" placeholder="Km por litro (ex: 12)" class="form-control mb-2">
+    <button onclick="salvarKmPorLitro()" class="btn btn-info mb-2">Salvar km/litro</button>
+    <input type="text" id="tipoGasto" placeholder="Ex: Gasolina" class="form-control mb-2">
+    <input type="number" id="valorGasto" placeholder="R$" class="form-control mb-2">
+    <button onclick="salvarGasto()" class="btn btn-success">Salvar Gasto</button>
+    <h5 class="mt-3">Total Gasto: R$<span id="totalGastos">0</span></h5>
+    <ul id="listaGastos" class="mt-2"></ul>
+</div>
 
             <!-- Aba 5: SOS -->
             <div class="tab-pane fade" id="emergencia">
