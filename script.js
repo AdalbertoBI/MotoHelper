@@ -3,7 +3,8 @@ let mapaPostos;
 let rotaLayer;
 let paradasCount = 1;
 let ultimaBusca = 0;
-let localizacaoAtual = null; // Armazena a localização atual do usuário
+let localizacaoAtual = null;
+let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca')) || {}; // Cache de resultados de busca
 
 document.addEventListener('DOMContentLoaded', () => {
     mapa = L.map('mapa').setView([-23.5505, -46.6333], 13);
@@ -19,11 +20,41 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Botão "Adicionar Parada" não encontrado!');
     }
 
+    // Configura o evento oninput para os campos de entrada existentes
+    configurarEventosBusca();
+
     // Obtém a localização atual do usuário
     obterLocalizacaoAtual();
 });
 
-// Função para obter a localização atual do usuário
+function configurarEventosBusca() {
+    const inputs = document.querySelectorAll('input[data-id]');
+    inputs.forEach(input => {
+        const inputId = input.getAttribute('data-id');
+        const datalistId = `sugestoes${inputId.charAt(0).toUpperCase() + inputId.slice(1)}`;
+        input.addEventListener('input', () => buscarSugestoes(inputId, datalistId));
+    });
+}
+
+function adicionarParada() {
+    paradasCount++;
+    const paradasDiv = document.getElementById('paradas');
+    const novaParada = document.createElement('input');
+    novaParada.type = 'text';
+    novaParada.id = `parada${paradasCount}`;
+    novaParada.setAttribute('data-id', `parada${paradasCount}`);
+    novaParada.placeholder = `Parada ${paradasCount} (opcional)`;
+    novaParada.className = 'form-control mb-2';
+    novaParada.setAttribute('list', `sugestoesParada${paradasCount}`);
+    const novaDatalist = document.createElement('datalist');
+    novaDatalist.id = `sugestoesParada${paradasCount}`;
+    paradasDiv.appendChild(novaParada);
+    paradasDiv.appendChild(novaDatalist);
+
+    // Configura o evento oninput para o novo campo
+    configurarEventosBusca();
+}
+
 function obterLocalizacaoAtual() {
     if (!navigator.geolocation) {
         console.error('Geolocalização não suportada pelo navegador.');
@@ -39,9 +70,8 @@ function obterLocalizacaoAtual() {
             };
             console.log('Localização atual:', localizacaoAtual);
 
-            // Faz geocodificação reversa para obter o endereço
             try {
-                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}`;
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}&addressdetails=1`;
                 const res = await fetch(url);
                 if (!res.ok) {
                     throw new Error(`Erro na geocodificação reversa: ${res.status} - ${res.statusText}`);
@@ -63,23 +93,6 @@ function obterLocalizacaoAtual() {
     );
 }
 
-function adicionarParada() {
-    paradasCount++;
-    const paradasDiv = document.getElementById('paradas');
-    const novaParada = document.createElement('input');
-    novaParada.type = 'text';
-    novaParada.id = `parada${paradasCount}`;
-    novaParada.placeholder = `Parada ${paradasCount} (opcional)`;
-    novaParada.className = 'form-control mb-2';
-    novaParada.setAttribute('list', `sugestoesParada${paradasCount}`);
-    novaParada.setAttribute('oninput', `buscarSugestoes('parada${paradasCount}', 'sugestoesParada${paradasCount}')`);
-    const novaDatalist = document.createElement('datalist');
-    novaDatalist.id = `sugestoesParada${paradasCount}`;
-    paradasDiv.appendChild(novaParada);
-    paradasDiv.appendChild(novaDatalist);
-}
-
-// Função para formatar o endereço no padrão "rua, número, bairro, cidade, estado"
 function formatarEndereco(address) {
     const rua = address.road || '';
     const numero = address.house_number || '';
@@ -102,19 +115,32 @@ async function buscarSugestoes(inputId, datalistId) {
     if (agora - ultimaBusca < 500) return; // Debounce: espera 500ms entre requisições
     ultimaBusca = agora;
 
-    const endereco = document.getElementById(inputId).value;
+    const endereco = document.getElementById(inputId).value.trim();
     if (!endereco || endereco.length < 3) {
         document.getElementById(datalistId).innerHTML = '';
         return;
     }
 
+    console.log(`Buscando sugestões para: ${endereco}`);
+
+    // Verifica se o resultado está no cache
+    if (cacheBusca[endereco]) {
+        console.log('Resultado encontrado no cache:', cacheBusca[endereco]);
+        const datalist = document.getElementById(datalistId);
+        datalist.innerHTML = '';
+        cacheBusca[endereco].forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            datalist.appendChild(option);
+        });
+        return;
+    }
+
     try {
-        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=5&addressdetails=1`;
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=5&addressdetails=1&countrycodes=BR&accept-language=pt`;
         
-        // Adiciona parâmetros de proximidade se a localização atual estiver disponível
         if (localizacaoAtual) {
             const { lat, lon } = localizacaoAtual;
-            // Define uma área de busca (viewbox) ao redor da localização atual
             const viewbox = `${lon - 0.1},${lat + 0.1},${lon + 0.1},${lat - 0.1}`;
             url += `&viewbox=${viewbox}&bounded=1`;
         }
@@ -124,14 +150,24 @@ async function buscarSugestoes(inputId, datalistId) {
             throw new Error(`Erro na busca de sugestões: ${res.status} - ${res.statusText}`);
         }
         const data = await res.json();
+
+        const sugestoes = data
+            .filter(item => item.address && (item.address.road || item.address.city)) // Filtra resultados incompletos
+            .map(item => formatarEndereco(item.address));
+
+        // Armazena no cache
+        cacheBusca[endereco] = sugestoes;
+        localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
+
         const datalist = document.getElementById(datalistId);
         datalist.innerHTML = '';
-        data.forEach(item => {
-            const enderecoFormatado = formatarEndereco(item.address);
+        sugestoes.forEach(sugestao => {
             const option = document.createElement('option');
-            option.value = enderecoFormatado;
+            option.value = sugestao;
             datalist.appendChild(option);
         });
+
+        console.log('Sugestões exibidas:', sugestoes);
     } catch (error) {
         console.error('Erro ao buscar sugestões:', error);
         alert("Não foi possível buscar sugestões de endereço. Verifique sua conexão e tente novamente.");
@@ -141,7 +177,7 @@ async function buscarSugestoes(inputId, datalistId) {
 async function geocodificar(endereco) {
     if (!endereco) return null;
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1&addressdetails=1`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1&addressdetails=1&countrycodes=BR`;
         const res = await fetch(url);
         if (!res.ok) {
             throw new Error(`Erro na geocodificação: ${res.status} - ${res.statusText}`);
