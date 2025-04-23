@@ -1,17 +1,13 @@
-let mapa;
-let mapaPostos;
-let rotaLayer;
 let paradasCount = 1;
 let ultimaBusca = 0;
 let localizacaoAtual = null;
-let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca')) || {}; // Cache de resultados de busca
+let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca')) || {};
+let rotaCoordenadas = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    mapa = L.map('mapa').setView([-23.5505, -46.6333], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
-    mapaPostos = L.map('mapaPostos');
     carregarGastos();
     carregarKmPorLitro();
+    carregarPrecoPorLitro();
 
     const btnAdicionarParada = document.getElementById('btnAdicionarParada');
     if (btnAdicionarParada) {
@@ -20,10 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Botão "Adicionar Parada" não encontrado!');
     }
 
-    // Configura o evento oninput para os campos de entrada existentes
     configurarEventosBusca();
-
-    // Obtém a localização atual do usuário
     obterLocalizacaoAtual();
 });
 
@@ -51,13 +44,13 @@ function adicionarParada() {
     paradasDiv.appendChild(novaParada);
     paradasDiv.appendChild(novaDatalist);
 
-    // Configura o evento oninput para o novo campo
     configurarEventosBusca();
 }
 
 function obterLocalizacaoAtual() {
     if (!navigator.geolocation) {
         console.error('Geolocalização não suportada pelo navegador.');
+        inicializarMapa(null); // Usa fallback
         return;
     }
 
@@ -69,6 +62,9 @@ function obterLocalizacaoAtual() {
                 lon: pos.coords.longitude
             };
             console.log('Localização atual:', localizacaoAtual);
+
+            // Inicializa o mapa com a localização atual
+            inicializarMapa([localizacaoAtual.lat, localizacaoAtual.lon]);
 
             try {
                 const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}&addressdetails=1`;
@@ -88,21 +84,22 @@ function obterLocalizacaoAtual() {
         },
         (error) => {
             console.error('Erro ao obter localização atual:', error);
+            inicializarMapa(null); // Usa fallback
             document.getElementById('carregandoLocalizacao').style.display = 'none';
         }
     );
 }
 
-function formatarEndereco(address) {
+function formatarEndereco(address, numero = '') {
     const rua = address.road || '';
-    const numero = address.house_number || '';
+    const numeroFinal = numero || address.house_number || '';
     const bairro = address.suburb || address.neighbourhood || '';
     const cidade = address.city || address.town || address.village || '';
     const estado = address.state || '';
 
     const partes = [];
     if (rua) partes.push(rua);
-    if (numero) partes.push(numero);
+    if (numeroFinal) partes.push(numeroFinal);
     if (bairro) partes.push(bairro);
     if (cidade) partes.push(cidade);
     if (estado) partes.push(estado);
@@ -112,7 +109,7 @@ function formatarEndereco(address) {
 
 async function buscarSugestoes(inputId, datalistId) {
     const agora = Date.now();
-    if (agora - ultimaBusca < 500) return; // Debounce: espera 500ms entre requisições
+    if (agora - ultimaBusca < 500) return;
     ultimaBusca = agora;
 
     const endereco = document.getElementById(inputId).value.trim();
@@ -123,7 +120,6 @@ async function buscarSugestoes(inputId, datalistId) {
 
     console.log(`Buscando sugestões para: ${endereco}`);
 
-    // Verifica se o resultado está no cache
     if (cacheBusca[endereco]) {
         console.log('Resultado encontrado no cache:', cacheBusca[endereco]);
         const datalist = document.getElementById(datalistId);
@@ -151,11 +147,48 @@ async function buscarSugestoes(inputId, datalistId) {
         }
         const data = await res.json();
 
-        const sugestoes = data
-            .filter(item => item.address && (item.address.road || item.address.city)) // Filtra resultados incompletos
-            .map(item => formatarEndereco(item.address));
+        console.log('Resultados brutos do Nominatim:', data);
 
-        // Armazena no cache
+        const sugestoesMap = new Map();
+        const numeroMatch = endereco.match(/\b\d+\b/);
+        const numero = numeroMatch ? numeroMatch[0] : '';
+        const isPar = numero ? parseInt(numero) % 2 === 0 : null;
+
+        for (const item of data) {
+            if (item.address && (item.address.road || item.type === 'highway')) {
+                let sugestaoBase = formatarEndereco(item.address);
+                const ruaNumeroKey = `${item.address.road}, ${numero || item.address.house_number || ''}`.trim();
+
+                if (!sugestoesMap.has(ruaNumeroKey) || parseFloat(item.importance) > parseFloat(sugestoesMap.get(ruaNumeroKey).importance)) {
+                    sugestoesMap.set(ruaNumeroKey, { sugestao: sugestaoBase, importance: item.importance });
+                }
+
+                if (numero && !item.address.house_number) {
+                    const numerosProximos = [];
+                    for (let i = 0; i <= 2; i += 2) {
+                        const numMenor = parseInt(numero) - i;
+                        const numMaior = parseInt(numero) + i;
+                        if (numMenor > 0 && (numMenor % 2 === (isPar ? 0 : 1))) {
+                            numerosProximos.push(numMenor.toString());
+                        }
+                        if (numMaior % 2 === (isPar ? 0 : 1)) {
+                            numerosProximos.push(numMaior.toString());
+                        }
+                    }
+
+                    numerosProximos.forEach(num => {
+                        const sugestaoComNumero = formatarEndereco(item.address, num);
+                        const keyComNumero = `${item.address.road}, ${num}`.trim();
+                        if (!sugestoesMap.has(keyComNumero) || parseFloat(item.importance) > parseFloat(sugestoesMap.get(keyComNumero).importance)) {
+                            sugestoesMap.set(keyComNumero, { sugestao: sugestaoComNumero, importance: item.importance });
+                        }
+                    });
+                }
+            }
+        }
+
+        const sugestoes = Array.from(sugestoesMap.values()).map(entry => entry.sugestao);
+
         cacheBusca[endereco] = sugestoes;
         localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
 
@@ -177,26 +210,173 @@ async function buscarSugestoes(inputId, datalistId) {
 async function geocodificar(endereco) {
     if (!endereco) return null;
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1&addressdetails=1&countrycodes=BR`;
-        const res = await fetch(url);
+        const numeroMatch = endereco.match(/\b\d+\b/);
+        const numeroOriginal = numeroMatch ? parseInt(numeroMatch[0]) : null;
+        const isPar = numeroOriginal ? numeroOriginal % 2 === 0 : null;
+        let enderecoBase = endereco;
+
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBase)}&limit=5&addressdetails=1&countrycodes=BR`;
+        let res = await fetch(url);
         if (!res.ok) {
             throw new Error(`Erro na geocodificação: ${res.status} - ${res.statusText}`);
         }
-        const data = await res.json();
-        if (data.length > 0) {
-            return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        let data = await res.json();
+
+        console.log(`Resultados do Nominatim para geocodificação de "${enderecoBase}":`, data);
+
+        let bestResult = null;
+        let highestImportance = -1;
+
+        for (const item of data) {
+            if (item.address && (item.address.road || item.type === 'highway')) {
+                const coords = [parseFloat(item.lat), parseFloat(item.lon)];
+                const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords[0]}&lon=${coords[1]}&addressdetails=1`;
+                const reverseRes = await fetch(reverseUrl);
+                if (!reverseRes.ok) {
+                    continue;
+                }
+                const reverseData = await reverseRes.json();
+                if (reverseData.address && (reverseData.address.road || reverseData.address.highway)) {
+                    const importance = parseFloat(item.importance) || 0;
+                    if (importance > highestImportance) {
+                        bestResult = coords;
+                        highestImportance = importance;
+                    }
+                }
+            }
         }
-        return null;
+
+        if (bestResult) {
+            console.log(`Geocodificação bem-sucedida para "${enderecoBase}": ${bestResult}`);
+            return bestResult;
+        }
+
+        if (numeroOriginal && isPar !== null) {
+            const numerosProximos = [];
+            for (let i = 2; i <= 10; i += 2) {
+                const numMenor = numeroOriginal - i;
+                const numMaior = numeroOriginal + i;
+                if (numMenor > 0 && (numMenor % 2 === (isPar ? 0 : 1))) {
+                    numerosProximos.push(numMenor.toString());
+                }
+                if (numMaior % 2 === (isPar ? 0 : 1)) {
+                    numerosProximos.push(numMaior.toString());
+                }
+            }
+
+            for (const num of numerosProximos) {
+                enderecoBase = endereco.replace(/\b\d+\b/, num);
+                url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBase)}&limit=5&addressdetails=1&countrycodes=BR`;
+                res = await fetch(url);
+                if (!res.ok) {
+                    continue;
+                }
+                data = await res.json();
+
+                highestImportance = -1;
+                for (const item of data) {
+                    if (item.address && (item.address.road || item.type === 'highway')) {
+                        const coords = [parseFloat(item.lat), parseFloat(item.lon)];
+                        const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords[0]}&lon=${coords[1]}&addressdetails=1`;
+                        const reverseRes = await fetch(reverseUrl);
+                        if (!reverseRes.ok) {
+                            continue;
+                        }
+                        const reverseData = await reverseRes.json();
+                        if (reverseData.address && (reverseData.address.road || reverseData.address.highway)) {
+                            const importance = parseFloat(item.importance) || 0;
+                            if (importance > highestImportance) {
+                                bestResult = coords;
+                                highestImportance = importance;
+                            }
+                        }
+                    }
+                }
+                if (bestResult) {
+                    console.log(`Geocodificação bem-sucedida para "${enderecoBase}": ${bestResult}`);
+                    break;
+                }
+            }
+        }
+
+        if (bestResult) return bestResult;
+
+        const enderecoSemNumero = endereco.replace(/\b\d+\b,?\s*/, '').trim();
+        url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoSemNumero)}&limit=5&addressdetails=1&countrycodes=BR`;
+        res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Erro na geocodificação (sem número): ${res.status} - ${res.statusText}`);
+        }
+        data = await res.json();
+
+        highestImportance = -1;
+        for (const item of data) {
+            if (item.address && (item.address.road || item.type === 'highway')) {
+                const coords = [parseFloat(item.lat), parseFloat(item.lon)];
+                const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords[0]}&lon=${coords[1]}&addressdetails=1`;
+                const reverseRes = await fetch(reverseUrl);
+                if (!reverseRes.ok) {
+                    continue;
+                }
+                const reverseData = await reverseRes.json();
+                if (reverseData.address && (reverseData.address.road || reverseData.address.highway)) {
+                    const importance = parseFloat(item.importance) || 0;
+                    if (importance > highestImportance) {
+                        bestResult = coords;
+                        highestImportance = importance;
+                    }
+                }
+            }
+        }
+
+        if (bestResult) {
+            console.log(`Geocodificação bem-sucedida para "${enderecoSemNumero}": ${bestResult}`);
+            return bestResult;
+        }
+
+        const partes = endereco.split(',');
+        const ruaCidadeEstado = partes.filter(part => !part.match(/\b\d+\b/)).slice(0, 3).join(', ').trim();
+        url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ruaCidadeEstado)}&limit=5&addressdetails=1&countrycodes=BR`;
+        res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Erro na geocodificação (rua, cidade, estado): ${res.status} - ${res.statusText}`);
+        }
+        data = await res.json();
+
+        highestImportance = -1;
+        for (const item of data) {
+            if (item.address && (item.address.road || item.type === 'highway')) {
+                const coords = [parseFloat(item.lat), parseFloat(item.lon)];
+                const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords[0]}&lon=${coords[1]}&addressdetails=1`;
+                const reverseRes = await fetch(reverseUrl);
+                if (!reverseRes.ok) {
+                    continue;
+                }
+                const reverseData = await reverseRes.json();
+                if (reverseData.address && (reverseData.address.road || reverseData.address.highway)) {
+                    const importance = parseFloat(item.importance) || 0;
+                    if (importance > highestImportance) {
+                        bestResult = coords;
+                        highestImportance = importance;
+                    }
+                }
+            }
+        }
+
+        if (bestResult) {
+            console.log(`Geocodificação bem-sucedida para "${ruaCidadeEstado}": ${bestResult}`);
+            return bestResult;
+        }
+
+        throw new Error(`O endereço "${endereco}" não está próximo de uma rua roteável. Tente um endereço mais genérico, como apenas a rua e a cidade (ex.: "Rua Bacabal, São José dos Campos, São Paulo"), ou use as sugestões da lista de autocompletar.`);
     } catch (error) {
         console.error('Erro na geocodificação:', error);
-        throw new Error("Não foi possível geocodificar o endereço. Tente usar uma sugestão da lista ou verifique sua conexão.");
+        throw new Error(error.message || "Não foi possível geocodificar o endereço. Tente usar uma sugestão da lista ou verifique sua conexão.");
     }
 }
 
 async function calcularRota() {
-    if (rotaLayer) {
-        mapa.removeLayer(rotaLayer);
-    }
+    document.getElementById('botaoIniciarRota').style.display = 'none';
 
     const origem = document.getElementById('origem').value;
     const destino = document.getElementById('destino').value;
@@ -214,17 +394,20 @@ async function calcularRota() {
     try {
         const coordsOrigem = await geocodificar(origem);
         const coordsDestino = await geocodificar(destino);
-        const coordsParadas = await Promise.all(paradas.map(async (parada) => {
+        const coordsParadas = await Promise.all(paradas.map(async (parada, index) => {
             const coords = await geocodificar(parada);
-            if (!coords) throw new Error(`Endereço inválido: ${parada}`);
+            if (!coords) throw new Error(`Endereço inválido: ${parada} (Parada ${index + 1})`);
             return coords;
         }));
 
         if (!coordsOrigem || !coordsDestino || coordsParadas.includes(null)) {
-            throw new Error("Um ou mais endereços não foram encontrados. Use as sugestões da lista.");
+            throw new Error("Um ou mais endereços não foram encontrados. Use as sugestões da lista de autocompletar.");
         }
 
         const coords = [coordsOrigem, ...coordsParadas, coordsDestino];
+        console.log('Coordenadas enviadas ao OpenRouteService:', coords);
+
+        rotaCoordenadas = coords;
 
         const apiKey = '5b3ce3597851110001cf62488d59f67c5c15452c92c89eb27e1004c6';
         const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}`;
@@ -232,7 +415,7 @@ async function calcularRota() {
             coordinates: coords,
             units: 'km',
             instructions: true,
-            extra_info: ['waytype'],
+            extra_info: ['waytype']
         };
 
         const res = await fetch(url, {
@@ -243,7 +426,13 @@ async function calcularRota() {
 
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Erro na API OpenRouteService: ${res.status} - ${errorText}`);
+            const errorData = JSON.parse(errorText);
+            if (errorData.error && errorData.error.code === 2010) {
+                const coordIndex = parseInt(errorData.error.message.match(/coordinate (\d+)/)?.[1] || 0);
+                const enderecoProblema = coordIndex === 0 ? origem : (coordIndex <= paradas.length ? paradas[coordIndex - 1] : destino);
+                throw new Error(`Não foi possível encontrar uma rota para o endereço "${enderecoProblema}". Ele pode estar em uma área sem ruas próximas. Tente um endereço mais genérico, como apenas a rua e a cidade (ex.: "Rua Bacabal, São José dos Campos, São Paulo"), ou use as sugestões da lista de autocompletar.`);
+            }
+            throw new Error(`Erro na API OpenRouteService: ${res.status} - ${errorText}. Tente novamente ou verifique os endereços.`);
         }
 
         const data = await res.json();
@@ -252,14 +441,26 @@ async function calcularRota() {
             const distancia = data.features[0].properties.segments.reduce((sum, seg) => sum + seg.distance, 0);
             const geometry = data.features[0].geometry.coordinates;
 
-            const polyline = L.polyline(geometry.map(coord => [coord[1], coord[0]]), { color: 'blue' }).addTo(mapa);
-            mapa.fitBounds(polyline.getBounds());
-            rotaLayer = polyline;
+            // Adiciona marcadores e desenha a rota
+            adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino);
+            desenharRota(geometry);
 
             const kmPorLitro = parseFloat(localStorage.getItem('kmPorLitro')) || 0;
+            const precoPorLitro = parseFloat(localStorage.getItem('precoPorLitro')) || 0;
             const litros = kmPorLitro > 0 ? distancia / kmPorLitro : 0;
-            let resultado = `Distância: ${distancia.toFixed(2)} km<br>` +
-                           (kmPorLitro > 0 ? `Combustível estimado: ${litros.toFixed(2)} litros<br>` : 'Defina o km/litro na aba Gastos.<br>');
+            const custoCombustivel = litros * precoPorLitro;
+
+            let resultado = `Distância: ${distancia.toFixed(2)} km<br>`;
+            if (kmPorLitro > 0) {
+                resultado += `Combustível estimado: ${litros.toFixed(2)} litros<br>`;
+                if (precoPorLitro > 0) {
+                    resultado += `Custo do combustível: R$${custoCombustivel.toFixed(2)}<br>`;
+                } else {
+                    resultado += 'Defina o preço por litro na aba Gastos.<br>';
+                }
+            } else {
+                resultado += 'Defina o km/litro na aba Gastos.<br>';
+            }
 
             const waytypes = data.features[0].properties.extras.waytype;
             if (waytypes) {
@@ -271,6 +472,7 @@ async function calcularRota() {
             }
 
             document.getElementById('resultadoRota').innerHTML = resultado;
+            document.getElementById('botaoIniciarRota').style.display = 'block';
 
             const instrucoesDiv = document.getElementById('instrucoesRota');
             instrucoesDiv.innerHTML = '<b>Instruções de Navegação:</b><br>';
@@ -285,8 +487,32 @@ async function calcularRota() {
         }
     } catch (error) {
         console.error('Erro ao calcular a rota:', error);
-        alert(`Erro: ${error.message}\nSugestão: Use os endereços sugeridos pela lista de autocompletar.`);
+        alert(`Erro: ${error.message}\nSugestão: Use os endereços sugeridos pela lista de autocompletar ou simplifique o endereço (ex.: apenas rua, cidade e estado).`);
     }
+}
+
+function iniciarRota() {
+    if (!rotaCoordenadas || rotaCoordenadas.length < 2) {
+        alert("Nenhuma rota disponível para iniciar. Calcule a rota primeiro.");
+        return;
+    }
+
+    let googleMapsUrl = 'https://www.google.com/maps/dir/';
+    rotaCoordenadas.forEach((coord, index) => {
+        googleMapsUrl += `${coord[0]},${coord[1]}/`;
+    });
+
+    let wazeUrl = 'https://waze.com/ul?';
+    if (rotaCoordenadas.length === 2) {
+        wazeUrl += `ll=${rotaCoordenadas[1][0]},${rotaCoordenadas[1][1]}&from=${rotaCoordenadas[0][0]},${rotaCoordenadas[0][1]}&navigate=yes`;
+    } else {
+        wazeUrl += `ll=${rotaCoordenadas[rotaCoordenadas.length - 1][0]},${rotaCoordenadas[rotaCoordenadas.length - 1][1]}&from=${rotaCoordenadas[0][0]},${rotaCoordenadas[0][1]}&navigate=yes`;
+    }
+
+    window.location.href = googleMapsUrl;
+    setTimeout(() => {
+        window.location.href = wazeUrl;
+    }, 1000);
 }
 
 function calcularFrete() {
@@ -306,8 +532,7 @@ function buscarPostos() {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        mapaPostos.setView([lat, lng], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaPostos);
+        inicializarMapaPostos(lat, lng);
 
         fetch(`https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="fuel"](around:5000,${lat},${lng});out;`)
             .then(res => res.json())
@@ -317,8 +542,7 @@ function buscarPostos() {
                 listaPostos.innerHTML = "";
 
                 postos.forEach(posto => {
-                    L.marker([posto.lat, posto.lon]).addTo(mapaPostos)
-                        .bindPopup(`<b>${posto.tags?.name || "Posto Desconhecido"}</b>`);
+                    adicionarMarcadorPosto(posto.lat, posto.lon, posto.tags?.name);
 
                     const li = document.createElement('li');
                     li.textContent = posto.tags?.name || "Posto sem nome";
@@ -375,6 +599,21 @@ function salvarKmPorLitro() {
 function carregarKmPorLitro() {
     const kmPorLitro = localStorage.getItem('kmPorLitro') || '';
     document.getElementById('kmPorLitro').value = kmPorLitro;
+}
+
+function salvarPrecoPorLitro() {
+    const precoPorLitro = parseFloat(document.getElementById('precoPorLitro').value);
+    if (isNaN(precoPorLitro) || precoPorLitro <= 0) {
+        alert("Digite um valor válido para o preço por litro!");
+        return;
+    }
+    localStorage.setItem('precoPorLitro', precoPorLitro);
+    carregarPrecoPorLitro();
+}
+
+function carregarPrecoPorLitro() {
+    const precoPorLitro = localStorage.getItem('precoPorLitro') || '';
+    document.getElementById('precoPorLitro').value = precoPorLitro;
 }
 
 function enviarSOS() {
