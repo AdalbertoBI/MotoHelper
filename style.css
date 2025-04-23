@@ -91,3 +91,8 @@ ul {
 li {
     padding: 5px 0;
 }
+
+#buscandoSugestoes {
+    font-size: 0.9em;
+    margin: 5px 0;
+}

@@ -4,6 +4,7 @@ const ASSETS = [
   '/index.html',
   '/style.css',
   '/script.js',
+  '/mapa.js',
   '/img/icon.png'
 ];
 
@@ -15,6 +16,15 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((response) => response || fetch(e.request))
+    caches.match(e.request).then((response) => {
+      if (response) return response;
+      if (!navigator.onLine) {
+        return new Response('Você está offline. Conecte-se à internet para usar o MotoHelper.', {
+          status: 503,
+          statusText: 'Service Unavailable'
+        });
+      }
+      return fetch(e.request);
+    })
   );
 });

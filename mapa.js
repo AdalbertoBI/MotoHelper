@@ -6,16 +6,23 @@ let marcadores = [];
 function inicializarMapa(localizacaoInicial) {
     const fallbackLocalizacao = [-23.1791, -45.8872]; // São José dos Campos, SP
     const centroInicial = localizacaoInicial || fallbackLocalizacao;
+
+    // Evitar inicializar o mapa mais de uma vez
+    if (mapa) {
+        mapa.setView(centroInicial, 13);
+        return;
+    }
+
     mapa = L.map('mapa').setView(centroInicial, 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(mapa);
-
-    mapaPostos = L.map('mapaPostos');
 }
 
 function centralizarMapa(lat, lon) {
-    mapa.setView([lat, lon], 13);
+    if (mapa) {
+        mapa.setView([lat, lon], 13);
+    }
 }
 
 function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
@@ -77,7 +84,13 @@ function desenharRota(geometry) {
 }
 
 function inicializarMapaPostos(lat, lng) {
-    mapaPostos.setView([lat, lng], 14);
+    // Evitar inicializar o mapa mais de uma vez
+    if (mapaPostos) {
+        mapaPostos.setView([lat, lng], 14);
+        return;
+    }
+
+    mapaPostos = L.map('mapaPostos').setView([lat, lng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(mapaPostos);
