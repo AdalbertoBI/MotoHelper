@@ -4,10 +4,9 @@ let rotaLayer = null;
 let marcadores = [];
 
 function inicializarMapa(localizacaoInicial) {
-    const fallbackLocalizacao = [-23.1791, -45.8872]; // São José dos Campos, SP
+    const fallbackLocalizacao = [-23.1791, -45.8872];
     const centroInicial = localizacaoInicial || fallbackLocalizacao;
 
-    // Evitar inicializar o mapa mais de uma vez
     if (mapa) {
         mapa.setView(centroInicial, 13);
         return;
@@ -15,7 +14,8 @@ function inicializarMapa(localizacaoInicial) {
 
     mapa = L.map('mapa').setView(centroInicial, 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18
     }).addTo(mapa);
 }
 
@@ -26,39 +26,44 @@ function centralizarMapa(lat, lon) {
 }
 
 function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
-    // Limpa marcadores anteriores
+    // Remove marcadores existentes
     marcadores.forEach(marcador => mapa.removeLayer(marcador));
     marcadores = [];
 
     // Ícones personalizados
     const iconeOrigem = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         iconSize: [25, 41],
         iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
     });
 
     const iconeParada = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         iconSize: [25, 41],
         iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
     });
 
     const iconeDestino = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         iconSize: [25, 41],
         iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
     });
 
-    // Adiciona marcador da origem
+    // Adiciona marcadores
     const marcadorOrigem = L.marker(coordsOrigem, { icon: iconeOrigem })
         .bindPopup('Origem')
         .addTo(mapa);
     marcadores.push(marcadorOrigem);
 
-    // Adiciona marcadores das paradas
     coordsParadas.forEach((coord, index) => {
         const marcadorParada = L.marker(coord, { icon: iconeParada })
             .bindPopup(`Parada ${index + 1}`)
@@ -66,7 +71,6 @@ function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
         marcadores.push(marcadorParada);
     });
 
-    // Adiciona marcador do destino
     const marcadorDestino = L.marker(coordsDestino, { icon: iconeDestino })
         .bindPopup('Destino')
         .addTo(mapa);
@@ -78,13 +82,18 @@ function desenharRota(geometry) {
         mapa.removeLayer(rotaLayer);
     }
 
-    const polyline = L.polyline(geometry.map(coord => [coord[1], coord[0]]), { color: 'blue' }).addTo(mapa);
+    const polyline = L.polyline(geometry.map(coord => [coord[1], coord[0]]), {
+        color: 'blue',
+        weight: 5,
+        opacity: 0.7,
+        lineJoin: 'round'
+    }).addTo(mapa);
+    
     mapa.fitBounds(polyline.getBounds());
     rotaLayer = polyline;
 }
 
 function inicializarMapaPostos(lat, lng) {
-    // Evitar inicializar o mapa mais de uma vez
     if (mapaPostos) {
         mapaPostos.setView([lat, lng], 14);
         return;
@@ -92,12 +101,22 @@ function inicializarMapaPostos(lat, lng) {
 
     mapaPostos = L.map('mapaPostos').setView([lat, lng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18
     }).addTo(mapaPostos);
 }
 
 function adicionarMarcadorPosto(lat, lon, nome) {
-    L.marker([lat, lon])
+    const iconePosto = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    L.marker([lat, lon], { icon: iconePosto })
         .addTo(mapaPostos)
         .bindPopup(`<b>${nome || "Posto Desconhecido"}</b>`);
 }

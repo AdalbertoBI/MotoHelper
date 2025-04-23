@@ -32,6 +32,7 @@ h2 {
     padding: 10px 20px;
     cursor: pointer;
     transition: background-color 0.3s;
+    font-size: 16px;
 }
 
 .tablink.active {
@@ -41,18 +42,25 @@ h2 {
 
 .tabcontent {
     display: none;
+    animation: fadeEffect 0.5s;
 }
 
 .tabcontent.active {
     display: block;
 }
 
+@keyframes fadeEffect {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
 .form-control {
     width: 100%;
     padding: 10px;
-    margin: 5px 0;
+    margin: 8px 0;
     border: 1px solid #ccc;
     border-radius: 4px;
+    box-sizing: border-box;
 }
 
 .btn {
@@ -60,7 +68,9 @@ h2 {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    margin: 5px 0;
+    margin: 8px 0;
+    font-size: 16px;
+    transition: background-color 0.3s;
 }
 
 .btn-primary {
@@ -68,9 +78,17 @@ h2 {
     color: white;
 }
 
+.btn-primary:hover {
+    background-color: #0069d9;
+}
+
 .btn-secondary {
     background-color: #6c757d;
     color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
 }
 
 .btn-danger {
@@ -78,9 +96,17 @@ h2 {
     color: white;
 }
 
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
 .btn-success {
     background-color: #28a745;
     color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
 }
 
 ul {
@@ -89,10 +115,58 @@ ul {
 }
 
 li {
-    padding: 5px 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.loading {
+    color: #007bff;
+    font-weight: bold;
+    padding: 10px;
+}
+
+.error {
+    color: #dc3545;
+    font-weight: bold;
+    padding: 10px;
+    background-color: #f8d7da;
+    border-radius: 4px;
+}
+
+#mapa, #mapaPostos {
+    height: 400px;
+    margin: 15px 0;
+    border-radius: 4px;
+    border: 1px solid #ddd;
 }
 
 #buscandoSugestoes {
     font-size: 0.9em;
     margin: 5px 0;
+    font-style: italic;
+}
+
+#carregandoLocalizacao {
+    font-size: 0.9em;
+    margin: 5px 0;
+    color: #6c757d;
+}
+
+#resultadoRota, #instrucoesRota {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+#resultadoFrete {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #28a745;
+    margin-top: 15px;
+}
+
+#totalGastos {
+    color: #dc3545;
+    font-weight: bold;
 }

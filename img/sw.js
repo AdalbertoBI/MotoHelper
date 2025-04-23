@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motohelper-v1';
+const CACHE_NAME = 'motohelper-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -17,14 +17,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((response) => {
-      if (response) return response;
-      if (!navigator.onLine) {
-        return new Response('Você está offline. Conecte-se à internet para usar o MotoHelper.', {
-          status: 503,
-          statusText: 'Service Unavailable'
-        });
-      }
-      return fetch(e.request);
+      return response || fetch(e.request);
     })
   );
 });
