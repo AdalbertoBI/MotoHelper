@@ -2,7 +2,8 @@ let mapa;
 let mapaPostos;
 let rotaLayer;
 let paradasCount = 1;
-let ultimaBusca = 0; // Para evitar múltiplas requisições rápidas (debounce)
+let ultimaBusca = 0;
+let localizacaoAtual = null; // Armazena a localização atual do usuário
 
 document.addEventListener('DOMContentLoaded', () => {
     mapa = L.map('mapa').setView([-23.5505, -46.6333], 13);
@@ -17,7 +18,50 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error('Botão "Adicionar Parada" não encontrado!');
     }
+
+    // Obtém a localização atual do usuário
+    obterLocalizacaoAtual();
 });
+
+// Função para obter a localização atual do usuário
+function obterLocalizacaoAtual() {
+    if (!navigator.geolocation) {
+        console.error('Geolocalização não suportada pelo navegador.');
+        return;
+    }
+
+    document.getElementById('carregandoLocalizacao').style.display = 'block';
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            localizacaoAtual = {
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude
+            };
+            console.log('Localização atual:', localizacaoAtual);
+
+            // Faz geocodificação reversa para obter o endereço
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}`;
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error(`Erro na geocodificação reversa: ${res.status} - ${res.statusText}`);
+                }
+                const data = await res.json();
+                const enderecoFormatado = formatarEndereco(data.address);
+                document.getElementById('origem').value = enderecoFormatado;
+            } catch (error) {
+                console.error('Erro ao obter endereço da localização atual:', error);
+                document.getElementById('origem').value = '';
+            } finally {
+                document.getElementById('carregandoLocalizacao').style.display = 'none';
+            }
+        },
+        (error) => {
+            console.error('Erro ao obter localização atual:', error);
+            document.getElementById('carregandoLocalizacao').style.display = 'none';
+        }
+    );
+}
 
 function adicionarParada() {
     paradasCount++;
@@ -35,6 +79,24 @@ function adicionarParada() {
     paradasDiv.appendChild(novaDatalist);
 }
 
+// Função para formatar o endereço no padrão "rua, número, bairro, cidade, estado"
+function formatarEndereco(address) {
+    const rua = address.road || '';
+    const numero = address.house_number || '';
+    const bairro = address.suburb || address.neighbourhood || '';
+    const cidade = address.city || address.town || address.village || '';
+    const estado = address.state || '';
+
+    const partes = [];
+    if (rua) partes.push(rua);
+    if (numero) partes.push(numero);
+    if (bairro) partes.push(bairro);
+    if (cidade) partes.push(cidade);
+    if (estado) partes.push(estado);
+
+    return partes.join(', ');
+}
+
 async function buscarSugestoes(inputId, datalistId) {
     const agora = Date.now();
     if (agora - ultimaBusca < 500) return; // Debounce: espera 500ms entre requisições
@@ -47,7 +109,16 @@ async function buscarSugestoes(inputId, datalistId) {
     }
 
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=5`;
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=5&addressdetails=1`;
+        
+        // Adiciona parâmetros de proximidade se a localização atual estiver disponível
+        if (localizacaoAtual) {
+            const { lat, lon } = localizacaoAtual;
+            // Define uma área de busca (viewbox) ao redor da localização atual
+            const viewbox = `${lon - 0.1},${lat + 0.1},${lon + 0.1},${lat - 0.1}`;
+            url += `&viewbox=${viewbox}&bounded=1`;
+        }
+
         const res = await fetch(url);
         if (!res.ok) {
             throw new Error(`Erro na busca de sugestões: ${res.status} - ${res.statusText}`);
@@ -56,8 +127,9 @@ async function buscarSugestoes(inputId, datalistId) {
         const datalist = document.getElementById(datalistId);
         datalist.innerHTML = '';
         data.forEach(item => {
+            const enderecoFormatado = formatarEndereco(item.address);
             const option = document.createElement('option');
-            option.value = item.display_name;
+            option.value = enderecoFormatado;
             datalist.appendChild(option);
         });
     } catch (error) {
@@ -69,7 +141,7 @@ async function buscarSugestoes(inputId, datalistId) {
 async function geocodificar(endereco) {
     if (!endereco) return null;
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1&addressdetails=1`;
         const res = await fetch(url);
         if (!res.ok) {
             throw new Error(`Erro na geocodificação: ${res.status} - ${res.statusText}`);
