@@ -492,38 +492,52 @@ function formatarTempo(totalSegundos) {
     return resultado.trim() || 'Menos de 1 min';
 }
 
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 function iniciarRota() {
     if (!rotaCoordenadas || rotaCoordenadas.length < 2) {
         alert('Nenhuma rota calculada. Por favor, calcule uma rota primeiro.');
         return;
     }
 
-    const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
     const origemCoord = rotaCoordenadas[0];
     const destinoCoord = rotaCoordenadas[rotaCoordenadas.length - 1];
     const waypointsCoord = rotaCoordenadas.slice(1, -1);
-
     const origemParam = `${origemCoord[0]},${origemCoord[1]}`;
     const destinoParam = `${destinoCoord[0]},${destinoCoord[1]}`;
     let url;
 
-    if (appNavegacao === 'google_maps') {
+    if (isMobileDevice()) {
+        // No celular, usar apenas Google Maps
         url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
         if (waypointsCoord.length > 0) {
             const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
             url += `&waypoints=${waypointsParam}`;
         }
-        console.log('[script.js] Google Maps URL:', url);
-    } else if (appNavegacao === 'waze') {
-        url = `https://www.waze.com/ul?ll=${destinoParam.replace(',', '%2C')}&navigate=yes`;
-        if (waypointsCoord.length > 0) {
-            console.warn('[script.js] Waze não suporta múltiplas paradas diretamente. Usando apenas destino.');
-        }
-        console.log('[script.js] Waze URL:', url);
+        console.log('[script.js] Google Maps URL (celular):', url);
     } else {
-        console.error('[script.js] Aplicativo de navegação inválido:', appNavegacao);
-        alert('Erro: Aplicativo de navegação não configurado. Escolha um na aba Gastos.');
-        return;
+        // No computador, usar a preferência salva
+        const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
+        if (appNavegacao === 'google_maps') {
+            url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
+            if (waypointsCoord.length > 0) {
+                const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
+                url += `&waypoints=${waypointsParam}`;
+            }
+            console.log('[script.js] Google Maps URL (computador):', url);
+        } else if (appNavegacao === 'waze') {
+            url = `https://www.waze.com/ul?ll=${destinoParam.replace(',', '%2C')}&navigate=yes`;
+            if (waypointsCoord.length > 0) {
+                console.warn('[script.js] Waze não suporta múltiplas paradas diretamente. Usando apenas destino.');
+            }
+            console.log('[script.js] Waze URL (computador):', url);
+        } else {
+            console.error('[script.js] Aplicativo de navegação inválido:', appNavegacao);
+            alert('Erro: Aplicativo de navegação não configurado. Escolha um na aba Gastos.');
+            return;
+        }
     }
 
     window.open(url, '_blank');
