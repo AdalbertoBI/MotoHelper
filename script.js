@@ -487,37 +487,14 @@ function iniciarRota() {
     const waypointsCoord = rotaCoordenadas.slice(1, -1);
     const origemParam = `${origemCoord[0]},${origemCoord[1]}`;
     const destinoParam = `${destinoCoord[0]},${destinoCoord[1]}`;
-    let url;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
 
-    if (isMobileDevice()) {
-        url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
-        if (waypointsCoord.length > 0) {
-            const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
-            url += `&waypoints=${waypointsParam}`;
-        }
-        console.log('[script.js] Google Maps URL (celular):', url);
-    } else {
-        const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
-        if (appNavegacao === 'google_maps') {
-            url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
-            if (waypointsCoord.length > 0) {
-                const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
-                url += `&waypoints=${waypointsParam}`;
-            }
-            console.log('[script.js] Google Maps URL (computador):', url);
-        } else if (appNavegacao === 'waze') {
-            url = `https://www.waze.com/ul?ll=${destinoParam.replace(',', '%2C')}&navigate=yes`;
-            if (waypointsCoord.length > 0) {
-                console.warn('[script.js] Waze não suporta múltiplas paradas diretamente. Usando apenas destino.');
-            }
-            console.log('[script.js] Waze URL (computador):', url);
-        } else {
-            console.error('[script.js] Aplicativo de navegação inválido:', appNavegacao);
-            alert('Erro: Aplicativo de navegação não configurado. Escolha um na aba Gastos.');
-            return;
-        }
+    if (waypointsCoord.length > 0) {
+        const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
+        url += `&waypoints=${waypointsParam}`;
     }
 
+    console.log('[script.js] Google Maps URL:', url);
     window.open(url, '_blank');
 }
 

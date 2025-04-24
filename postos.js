@@ -127,25 +127,7 @@ function adicionarMarcadorPosto(lat, lon, nome) {
 function navegarParaPosto(latOrigem, lonOrigem, latDestino, lonDestino) {
     const origem = `${latOrigem},${lonOrigem}`;
     const destino = `${latDestino},${lonDestino}`;
-    let url;
-
-    if (isMobileDevice()) {
-        url = `https://www.google.com/maps/dir/?api=1&origin=${origem}&destination=${destino}&travelmode=driving`;
-        console.log('[postos.js] Google Maps URL (celular):', url);
-    } else {
-        const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
-        if (appNavegacao === 'google_maps') {
-            url = `https://www.google.com/maps/dir/?api=1&origin=${origem}&destination=${destino}&travelmode=driving`;
-            console.log('[postos.js] Google Maps URL (computador):', url);
-        } else if (appNavegacao === 'waze') {
-            url = `https://www.waze.com/ul?ll=${destino.replace(',', '%2C')}&navigate=yes`;
-            console.log('[postos.js] Waze URL (computador):', url);
-        } else {
-            console.error('[postos.js] Aplicativo de navegação inválido:', appNavegacao);
-            alert('Erro: Aplicativo de navegação não configurado. Escolha um na aba Gastos.');
-            return;
-        }
-    }
-
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origem}&destination=${destino}&travelmode=driving`;
+    console.log('[postos.js] Google Maps URL:', url);
     window.open(url, '_blank');
 }
