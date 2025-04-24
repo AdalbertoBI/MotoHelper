@@ -113,20 +113,20 @@ async function enviarSOS() {
                 const contato = contatos[i];
                 console.log(`[sos.js] Preparando envio para ${contato.nome}: ${contato.telefone}`);
 
-                // Gerar link do WhatsApp
-                const telefoneLimpo = contato.telefone.replace(/[^0-9+]/g, '');
+                // Gerar link do WhatsApp usando o esquema whatsapp://
+                const telefoneLimpo = contato.telefone.replace(/[^0-9+]/g, '').replace('+', ''); // Remove o "+" para o esquema whatsapp://
                 const mensagemEncoded = encodeURIComponent(mensagem);
-                const whatsappUrl = `https://wa.me/${telefoneLimpo}?text=${mensagemEncoded}`;
+                const whatsappUrl = `whatsapp://send?phone=${telefoneLimpo}&text=${mensagemEncoded}`;
 
                 try {
-                    // Abrir o WhatsApp
-                    window.open(whatsappUrl, '_blank');
+                    // Abrir o WhatsApp diretamente no app
+                    window.location.href = whatsappUrl;
                     console.log(`[sos.js] Link do WhatsApp aberto para ${contato.nome}: ${whatsappUrl}`);
                     
-                    // Adicionar pausa de 1 segundo antes de abrir o próximo link
+                    // Adicionar pausa de 2 segundos antes de abrir o próximo link
                     if (i < contatos.length - 1) {
-                        console.log('[sos.js] Aguardando 1 segundo antes de abrir o próximo link...');
-                        await delay(1000);
+                        console.log('[sos.js] Aguardando 2 segundos antes de abrir o próximo link...');
+                        await delay(2000);
                     }
                 } catch (error) {
                     console.error(`[sos.js] Erro ao abrir WhatsApp para ${contato.nome}:`, error);
