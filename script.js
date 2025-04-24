@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     carregarGastos();
     carregarKmPorLitro();
     carregarPrecoPorLitro();
+    carregarAppNavegacao();
     configurarListeners();
     obterLocalizacaoAtual();
     console.log('[script.js] Inicialização concluída.');
@@ -79,6 +80,10 @@ function configurarListeners() {
     const btnSalvarPreco = document.getElementById('btnSalvarPrecoPorLitro');
     if (btnSalvarPreco) btnSalvarPreco.addEventListener('click', salvarPrecoPorLitro);
     else console.warn('[script.js] Botão #btnSalvarPrecoPorLitro não encontrado.');
+
+    const btnSalvarAppNavegacao = document.getElementById('btnSalvarAppNavegacao');
+    if (btnSalvarAppNavegacao) btnSalvarAppNavegacao.addEventListener('click', salvarAppNavegacao);
+    else console.warn('[script.js] Botão #btnSalvarAppNavegacao não encontrado.');
 
     const btnSOS = document.getElementById('btnSOS');
     if (btnSOS) btnSOS.addEventListener('click', enviarSOS);
@@ -248,7 +253,7 @@ async function buscarSugestoes(inputId, datalistId) {
             localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
         } catch (e) {
             console.warn('[script.js] Não foi possível salvar cache:', e);
-            if (teste.name === 'QuotaExceededError') {
+            if (e.name === 'QuotaExceededError') {
                 cacheBusca = {};
                 localStorage.removeItem('cacheBusca');
             }
@@ -493,23 +498,35 @@ function iniciarRota() {
         return;
     }
 
+    const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
     const origemCoord = rotaCoordenadas[0];
     const destinoCoord = rotaCoordenadas[rotaCoordenadas.length - 1];
     const waypointsCoord = rotaCoordenadas.slice(1, -1);
 
     const origemParam = `${origemCoord[0]},${origemCoord[1]}`;
     const destinoParam = `${destinoCoord[0]},${destinoCoord[1]}`;
-    let googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
-    if (waypointsCoord.length > 0) {
-        const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
-        googleMapsUrl += `&waypoints=${waypointsParam}`;
-    }
-    console.log('[script.js] Google Maps URL:', googleMapsUrl);
-    window.open(googleMapsUrl, '_blank');
+    let url;
 
-    const wazeUrl = `https://www.waze.com/ul?ll=${destinoParam.replace(',', '%2C')}&navigate=yes`;
-    console.log('[script.js] Waze URL:', wazeUrl);
-    setTimeout(() => window.open(wazeUrl, '_blank'), 1500);
+    if (appNavegacao === 'google_maps') {
+        url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
+        if (waypointsCoord.length > 0) {
+            const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
+            url += `&waypoints=${waypointsParam}`;
+        }
+        console.log('[script.js] Google Maps URL:', url);
+    } else if (appNavegacao === 'waze') {
+        url = `https://www.waze.com/ul?ll=${destinoParam.replace(',', '%2C')}&navigate=yes`;
+        if (waypointsCoord.length > 0) {
+            console.warn('[script.js] Waze não suporta múltiplas paradas diretamente. Usando apenas destino.');
+        }
+        console.log('[script.js] Waze URL:', url);
+    } else {
+        console.error('[script.js] Aplicativo de navegação inválido:', appNavegacao);
+        alert('Erro: Aplicativo de navegação não configurado. Escolha um na aba Gastos.');
+        return;
+    }
+
+    window.open(url, '_blank');
 }
 
 function calcularFrete() {
@@ -672,7 +689,7 @@ function carregarGastos() {
             li.className = 'list-group-item d-flex justify-content-between align-items-center';
             li.innerHTML = `
                 <span>${gasto.data}: ${gasto.tipo} - <strong>R$ ${gasto.valor.toFixed(2)}</strong></span>
-                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGasto(${gasto.id})" title="Excluir Gasto">&times;</button>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGasto(${gasto.id})" title="Excluir Gasto">×</button>
             `;
             listaGastosUl.appendChild(li);
         });
@@ -705,7 +722,7 @@ function salvarKmPorLitro() {
     console.log('[script.js] Km/Litro salvo:', kmPorLitro);
     feedbackDiv.style.display = 'block';
     setTimeout(() => feedbackDiv.style.display = 'none', 3000);
-    carregarKmPorLitro(); // Atualiza o input imediatamente
+    carregarKmPorLitro();
 }
 
 function carregarKmPorLitro() {
@@ -731,7 +748,7 @@ function salvarPrecoPorLitro() {
     console.log('[script.js] Preço/Litro salvo:', precoPorLitro);
     feedbackDiv.style.display = 'block';
     setTimeout(() => feedbackDiv.style.display = 'none', 3000);
-    carregarPrecoPorLitro(); // Atualiza o input imediatamente
+    carregarPrecoPorLitro();
 }
 
 function carregarPrecoPorLitro() {
@@ -740,6 +757,32 @@ function carregarPrecoPorLitro() {
     const precoPorLitro = localStorage.getItem('precoPorLitro') || '';
     precoPorLitroInput.value = precoPorLitro;
     console.log('[script.js] Preço/Litro carregado:', precoPorLitro || 'N/A');
+}
+
+function salvarAppNavegacao() {
+    const appNavegacaoSelect = document.getElementById('appNavegacao');
+    const feedbackDiv = document.getElementById('appNavegacaoFeedback');
+    if (!appNavegacaoSelect || !feedbackDiv) return;
+
+    const appNavegacao = appNavegacaoSelect.value;
+    if (!appNavegacao || !['google_maps', 'waze'].includes(appNavegacao)) {
+        alert('Selecione um aplicativo de navegação válido!');
+        return;
+    }
+
+    localStorage.setItem('appNavegacao', appNavegacao);
+    console.log('[script.js] Aplicativo de navegação salvo:', appNavegacao);
+    feedbackDiv.style.display = 'block';
+    setTimeout(() => feedbackDiv.style.display = 'none', 3000);
+    carregarAppNavegacao();
+}
+
+function carregarAppNavegacao() {
+    const appNavegacaoSelect = document.getElementById('appNavegacao');
+    if (!appNavegacaoSelect) return;
+    const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
+    appNavegacaoSelect.value = appNavegacao;
+    console.log('[script.js] Aplicativo de navegação carregado:', appNavegacao);
 }
 
 function enviarSOS() {
