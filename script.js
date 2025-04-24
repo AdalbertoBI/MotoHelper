@@ -20,7 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[script.js] Mapa inicializado com sucesso.');
     } else {
         console.error('[script.js] Falha ao inicializar o mapa.');
-        document.getElementById('map').innerHTML = '<p style="color:red; font-weight:bold;">Erro ao carregar o mapa. Tente recarregar a página.</p>';
+        const mapDiv = document.getElementById('map');
+        if (mapDiv) {
+            mapDiv.innerHTML = '<p style="color:red; font-weight:bold;">Erro ao carregar o mapa. Tente recarregar a página.</p>';
+        }
     }
 
     configurarListeners();
@@ -29,13 +32,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function esperarLeaflet() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+        const maxTentativas = 20;
+        let tentativas = 0;
         const checkLeaflet = () => {
             if (typeof L !== 'undefined' && L.map) {
                 console.log('[script.js] Leaflet carregado.');
                 resolve();
+            } else if (tentativas >= maxTentativas) {
+                console.error('[script.js] Tempo esgotado para carregar Leaflet.');
+                reject(new Error('Biblioteca Leaflet não carregada após timeout.'));
             } else {
-                console.log('[script.js] Aguardando Leaflet...');
+                tentativas++;
+                console.log(`[script.js] Aguardando Leaflet... (tentativa ${tentativas}/${maxTentativas})`);
                 setTimeout(checkLeaflet, 150);
             }
         };
@@ -57,7 +66,6 @@ function configurarListeners() {
     if (btnGo) btnGo.addEventListener('click', iniciarRota);
     else console.warn('[script.js] Botão #btnGo não encontrado.');
 
-    // Listeners para outras abas são configurados nos respectivos arquivos
     console.log('[script.js] Listeners da aba Rotas configurados.');
 }
 
@@ -80,6 +88,7 @@ function obterLocalizacaoAtual() {
             } else {
                 console.warn('[script.js] Mapa não pronto, inicializando com localização.');
                 inicializarMapa([localizacaoAtual.lat, localizacaoAtual.lon]);
+                if (map) mapaPronto = true;
             }
             try {
                 const enderecoFormatado = await obterEnderecoReverso(localizacaoAtual.lat, localizacaoAtual.lon);
@@ -99,7 +108,10 @@ function obterLocalizacaoAtual() {
             console.error('[script.js] Erro na geolocalização:', error.message);
             if (carregandoDiv) carregandoDiv.style.display = 'none';
             alert(`Não foi possível obter sua localização: ${error.message}. Usando padrão.`);
-            if (!mapaPronto) inicializarMapa();
+            if (!mapaPronto) {
+                inicializarMapa();
+                if (map) mapaPronto = true;
+            }
         },
         { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
     );
@@ -283,8 +295,8 @@ async function geocodificar(endereco) {
 
 async function calcularRota() {
     console.log('[script.js] Iniciando cálculo de rota...');
-    if (!mapaPronto) {
-        alert('O mapa ainda não está pronto. Aguarde.');
+    if (!mapaPronto || !map) {
+        alert('O mapa não está pronto. Tente recarregar a página.');
         return;
     }
 
@@ -385,7 +397,7 @@ async function calcularRota() {
         processarRespostaRota(data, coordsParaApi);
     } catch (error) {
         console.error('[script.js] Erro no cálculo da rota:', error);
-        resultadoRotaDiv.innerHTML = `<div class="error"><b>Erro ao calcular a rota:</b><br>${error.message}.<br>Verifique os endereços e conexão. Veja o console para detalhes.</div>`;
+        resultadoRotaDiv.innerHTML = `<div class="error"><b>Erro ao calcular a rota:</b><br>${error.message}.<br>Verifique os endereços e conexão.</div>`;
         limparCamadasDoMapa('tudo');
     }
 }
@@ -478,7 +490,6 @@ function iniciarRota() {
     let url;
 
     if (isMobileDevice()) {
-        // No celular, usar apenas Google Maps
         url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
         if (waypointsCoord.length > 0) {
             const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');
@@ -486,7 +497,6 @@ function iniciarRota() {
         }
         console.log('[script.js] Google Maps URL (celular):', url);
     } else {
-        // No computador, usar a preferência salva
         const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
         if (appNavegacao === 'google_maps') {
             url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
@@ -511,7 +521,6 @@ function iniciarRota() {
     window.open(url, '_blank');
 }
 
-// Função compartilhada para calcular distância (usada por Postos)
 function calcularDistancia(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;

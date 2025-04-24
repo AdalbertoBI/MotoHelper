@@ -18,6 +18,16 @@ async function buscarPostos() {
         return;
     }
 
+    if (!mapaPronto || !map) {
+        console.warn('[postos.js] Mapa não inicializado. Tentando inicializar...');
+        inicializarMapa();
+        if (!map) {
+            listaPostosUl.innerHTML = '<li class="list-group-item list-group-item-danger">Erro: Mapa não pôde ser carregado.</li>';
+            return;
+        }
+        mapaPronto = true;
+    }
+
     listaPostosUl.innerHTML = '<li>Obtendo localização...</li>';
     limparCamadasDoMapa('tudo');
 
@@ -26,8 +36,7 @@ async function buscarPostos() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             console.log(`[postos.js] Localização para postos: ${lat}, ${lng}`);
-            if (mapaPronto) centralizarMapa(lat, lng, 14);
-            else inicializarMapa([lat, lng]);
+            centralizarMapa(lat, lng, 14);
 
             listaPostosUl.innerHTML = '<li>Buscando postos próximos (até 5km)...</li>';
             const raioBuscaMetros = 5000;
@@ -41,12 +50,20 @@ async function buscarPostos() {
                 const data = await res.json();
                 console.log('[postos.js] Resposta Overpass:', data);
 
-                const postos = data.elements;
+                let postos = data.elements;
                 listaPostosUl.innerHTML = '';
                 if (!postos || postos.length === 0) {
                     listaPostosUl.innerHTML = `<li class="list-group-item">Nenhum posto encontrado em ${raioBuscaMetros/1000} km.</li>`;
                     return;
                 }
+
+                postos = postos.map(posto => {
+                    if (posto.lat && posto.lon) {
+                        posto.distancia = calcularDistancia(lat, lng, posto.lat, posto.lon);
+                    }
+                    return posto;
+                }).filter(posto => posto.distancia !== undefined)
+                  .sort((a, b) => a.distancia - b.distancia);
 
                 adicionarMarcadorUsuario(lat, lng);
                 const boundsCoords = [[lat, lng]];
@@ -57,14 +74,16 @@ async function buscarPostos() {
                         boundsCoords.push([posto.lat, posto.lon]);
                         const li = document.createElement('li');
                         li.className = 'list-group-item';
-                        const dist = calcularDistancia(lat, lng, posto.lat, posto.lon);
-                        li.textContent = `${nomePosto} (~${dist.toFixed(1)} km)`;
+                        li.style.cursor = 'pointer';
+                        li.textContent = `${nomePosto} (~${posto.distancia.toFixed(1)} km)`;
+                        li.addEventListener('click', () => navegarParaPosto(lat, lng, posto.lat, posto.lon));
                         listaPostosUl.appendChild(li);
                     }
                 });
 
                 if (map && boundsCoords.length > 1) {
                     map.fitBounds(boundsCoords, { padding: [40, 40] });
+                    setTimeout(() => map.invalidateSize(), 100);
                 }
             } catch (error) {
                 console.error('[postos.js] Erro ao buscar postos:', error);
@@ -103,4 +122,30 @@ function adicionarMarcadorPosto(lat, lon, nome) {
     L.marker([lat, lon])
         .bindPopup(nome)
         .addTo(markersLayer);
+}
+
+function navegarParaPosto(latOrigem, lonOrigem, latDestino, lonDestino) {
+    const origem = `${latOrigem},${lonOrigem}`;
+    const destino = `${latDestino},${lonDestino}`;
+    let url;
+
+    if (isMobileDevice()) {
+        url = `https://www.google.com/maps/dir/?api=1&origin=${origem}&destination=${destino}&travelmode=driving`;
+        console.log('[postos.js] Google Maps URL (celular):', url);
+    } else {
+        const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
+        if (appNavegacao === 'google_maps') {
+            url = `https://www.google.com/maps/dir/?api=1&origin=${origem}&destination=${destino}&travelmode=driving`;
+            console.log('[postos.js] Google Maps URL (computador):', url);
+        } else if (appNavegacao === 'waze') {
+            url = `https://www.waze.com/ul?ll=${destino.replace(',', '%2C')}&navigate=yes`;
+            console.log('[postos.js] Waze URL (computador):', url);
+        } else {
+            console.error('[postos.js] Aplicativo de navegação inválido:', appNavegacao);
+            alert('Erro: Aplicativo de navegação não configurado. Escolha um na aba Gastos.');
+            return;
+        }
+    }
+
+    window.open(url, '_blank');
 }
