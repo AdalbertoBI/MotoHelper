@@ -21,11 +21,11 @@ function salvarContatos() {
     // Validação dos números de telefone
     const phoneRegex = /^\+?[1-9]\d{1,14}$/; // Formato internacional básico (ex.: +5511999999999)
     if (contato1Telefone && !phoneRegex.test(contato1Telefone)) {
-        alert('Telefone do Contato 1 inválido! Use o formato internacional, ex.: +5511999999999');
+        console.warn('[sos.js] Telefone do Contato 1 inválido:', contato1Telefone);
         return;
     }
     if (contato2Telefone && !phoneRegex.test(contato2Telefone)) {
-        alert('Telefone do Contato 2 inválido! Use o formato internacional, ex.: +5511999999999');
+        console.warn('[sos.js] Telefone do Contato 2 inválido:', contato2Telefone);
         return;
     }
 
@@ -82,60 +82,61 @@ function carregarContatos() {
     console.log('[sos.js] Contatos carregados:', contatos);
 }
 
-function enviarSOS() {
+// Função para adicionar pausa (delay) entre ações
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function enviarSOS() {
     if (!navigator.geolocation) {
-        alert('Seu navegador não suporta Geolocalização.');
+        console.error('[sos.js] Geolocalização não suportada pelo navegador.');
         return;
     }
-    alert('Obtendo localização para SOS...');
+
+    console.log('[sos.js] Obtendo localização para SOS...');
     navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             const acc = pos.coords.accuracy;
             const mensagem = `🚨 ALERTA SOS 🚨\nEstou precisando de ajuda!\nMinha localização: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${acc.toFixed(0)}m)\nLink: https://www.google.com/maps?q=${lat},${lng}`;
-            console.log('[sos.js] SOS:', mensagem);
+            console.log('[sos.js] Mensagem SOS gerada:', mensagem);
 
             const contatos = JSON.parse(localStorage.getItem('contatosEmergencia') || '[]');
-            let mensagemCompleta = mensagem;
-
-            if (contatos.length > 0) {
-                mensagemCompleta += '\n\nEnviando para:';
-                let contatosEnviados = 0;
-                contatos.forEach(contato => {
-                    mensagemCompleta += `\n- ${contato.nome} (${contato.telefone})`;
-                    console.log(`[sos.js] Preparando envio para ${contato.nome}: ${contato.telefone}`);
-
-                    // Gerar link do WhatsApp
-                    const telefoneLimpo = contato.telefone.replace(/[^0-9+]/g, '');
-                    const mensagemEncoded = encodeURIComponent(mensagem);
-                    const whatsappUrl = `https://wa.me/${telefoneLimpo}?text=${mensagemEncoded}`;
-
-                    try {
-                        // Tentar abrir o WhatsApp
-                        window.open(whatsappUrl, '_blank');
-                        contatosEnviados++;
-                    } catch (error) {
-                        console.error(`[sos.js] Erro ao abrir WhatsApp para ${contato.nome}:`, error);
-                        mensagemCompleta += `\n(Falha ao abrir WhatsApp para ${contato.nome})`;
-                    }
-                });
-
-                if (contatosEnviados === 0) {
-                    mensagemCompleta += '\n\nNenhuma mensagem foi enviada. Verifique se o WhatsApp está instalado e se os números estão corretos.';
-                } else {
-                    mensagemCompleta += `\n\n${contatosEnviados} mensagem(s) preparada(s) para envio via WhatsApp. Confirme o envio no aplicativo.`;
-                }
-            } else {
-                mensagemCompleta += '\n\nNenhum contato de emergência cadastrado.';
+            if (contatos.length === 0) {
+                console.warn('[sos.js] Nenhum contato de emergência cadastrado.');
+                return;
             }
 
-            // Exibir alerta com o resultado (incluindo simulação se não houver contatos)
-            alert(mensagemCompleta);
+            console.log('[sos.js] Enviando mensagem para', contatos.length, 'contato(s)...');
+            for (let i = 0; i < contatos.length; i++) {
+                const contato = contatos[i];
+                console.log(`[sos.js] Preparando envio para ${contato.nome}: ${contato.telefone}`);
+
+                // Gerar link do WhatsApp
+                const telefoneLimpo = contato.telefone.replace(/[^0-9+]/g, '');
+                const mensagemEncoded = encodeURIComponent(mensagem);
+                const whatsappUrl = `https://wa.me/${telefoneLimpo}?text=${mensagemEncoded}`;
+
+                try {
+                    // Abrir o WhatsApp
+                    window.open(whatsappUrl, '_blank');
+                    console.log(`[sos.js] Link do WhatsApp aberto para ${contato.nome}: ${whatsappUrl}`);
+                    
+                    // Adicionar pausa de 1 segundo antes de abrir o próximo link
+                    if (i < contatos.length - 1) {
+                        console.log('[sos.js] Aguardando 1 segundo antes de abrir o próximo link...');
+                        await delay(1000);
+                    }
+                } catch (error) {
+                    console.error(`[sos.js] Erro ao abrir WhatsApp para ${contato.nome}:`, error);
+                }
+            }
+
+            console.log('[sos.js] Processo de envio concluído.');
         },
         (error) => {
             console.error('[sos.js] Erro na localização para SOS:', error.message);
-            alert(`Não foi possível obter localização: ${error.message}`);
         },
         { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }
     );
