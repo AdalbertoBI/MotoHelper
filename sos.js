@@ -123,10 +123,10 @@ async function enviarSOS() {
                     window.location.href = whatsappUrl;
                     console.log(`[sos.js] Link do WhatsApp aberto para ${contato.nome}: ${whatsappUrl}`);
                     
-                    // Adicionar pausa de 2 segundos antes de abrir o próximo link
+                    // Adicionar pausa de 10 segundos antes de abrir o próximo link
                     if (i < contatos.length - 1) {
-                        console.log('[sos.js] Aguardando 2 segundos antes de abrir o próximo link...');
-                        await delay(2000);
+                        console.log('[sos.js] Aguardando 10 segundos antes de abrir o próximo link...');
+                        await delay(10000);
                     }
                 } catch (error) {
                     console.error(`[sos.js] Erro ao abrir WhatsApp para ${contato.nome}:`, error);
