@@ -1,32 +1,87 @@
+/* Definir variáveis para temas claro e escuro */
+:root {
+    --background-color: #f4f4f4;
+    --container-bg: #fff;
+    --text-color: #333;
+    --tab-bg: #f4f4f4;
+    --tab-active-bg: #007bff;
+    --tab-active-text: #fff;
+    --input-bg: #fff;
+    --input-border: #ccc;
+    --btn-primary-bg: #007bff;
+    --btn-primary-hover: #0056b3;
+    --btn-secondary-bg: #6c757d;
+    --btn-secondary-hover: #545b62;
+    --btn-success-bg: #28a745;
+    --btn-success-hover: #1e7e34;
+    --btn-danger-bg: #dc3545;
+    --btn-danger-hover: #b02a37;
+    --list-item-bg: #fff;
+    --list-item-border: #ddd;
+    --config-section-bg: #f8f9fa;
+    --error-color: #dc3545;
+    --loading-color: #007bff;
+}
+
+body.dark-mode {
+    --background-color: #1a1a1a;
+    --container-bg: #2c2c2c;
+    --text-color: #e0e0e0;
+    --tab-bg: #333;
+    --tab-active-bg: #0056b3;
+    --tab-active-text: #e0e0e0;
+    --input-bg: #333;
+    --input-border: #555;
+    --btn-primary-bg: #0056b3;
+    --btn-primary-hover: #003d82;
+    --btn-secondary-bg: #4a4a4a;
+    --btn-secondary-hover: #3a3a3a;
+    --btn-success-bg: #1e7e34;
+    --btn-success-hover: #145523;
+    --btn-danger-bg: #b02a37;
+    --btn-danger-hover: #8b1f2a;
+    --list-item-bg: #333;
+    --list-item-border: #555;
+    --config-section-bg: #2c2c2c;
+    --error-color: #ff6666;
+    --loading-color: #4da8ff;
+}
+
+body.light-mode {
+    /* Usa as cores padrão de :root */
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 .container {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
-    background: #fff;
+    background: var(--container-bg);
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
     border-radius: 8px;
+    position: relative;
 }
 
 h1 {
     text-align: center;
-    color: #333;
+    color: var(--text-color);
 }
 
 .tabs {
     display: flex;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--input-border);
     margin-bottom: 20px;
 }
 
 .tablink {
-    background: #f4f4f4;
+    background: var(--tab-bg);
     border: none;
     padding: 10px 20px;
     cursor: pointer;
@@ -35,23 +90,25 @@ h1 {
     flex: 1;
     text-align: center;
     border-radius: 5px 5px 0 0;
+    color: var(--text-color);
 }
 
 .tablink:hover {
-    background: #e0e0e0;
+    background: var(--input-border);
 }
 
 .tablink.active {
-    background: #007bff;
-    color: #fff;
+    background: var(--tab-active-bg);
+    color: var(--tab-active-text);
 }
 
 .tabcontent {
     display: none;
     padding: 20px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--input-border);
     border-top: none;
     border-radius: 0 0 8px 8px;
+    background: var(--container-bg);
 }
 
 .tabcontent.active {
@@ -66,18 +123,21 @@ h1 {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
+    color: var(--text-color);
 }
 
 .form-control {
     width: 100%;
     padding: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     box-sizing: border-box;
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 
 .form-control:focus {
-    border-color: #007bff;
+    border-color: var(--btn-primary-bg);
     outline: none;
     box-shadow: 0 0 5px rgba(0,123,255,0.3);
 }
@@ -92,39 +152,39 @@ h1 {
 }
 
 .btn-primary {
-    background: #007bff;
-    color: #fff;
+    background: var(--btn-primary-bg);
+    color: var(--tab-active-text);
 }
 
 .btn-primary:hover {
-    background: #0056b3;
+    background: var(--btn-primary-hover);
 }
 
 .btn-secondary {
-    background: #6c757d;
-    color: #fff;
+    background: var(--btn-secondary-bg);
+    color: var(--tab-active-text);
 }
 
 .btn-secondary:hover {
-    background: #545b62;
+    background: var(--btn-secondary-hover);
 }
 
 .btn-success {
-    background: #28a745;
-    color: #fff;
+    background: var(--btn-success-bg);
+    color: var(--tab-active-text);
 }
 
 .btn-success:hover {
-    background: #1e7e34;
+    background: var(--btn-success-hover);
 }
 
 .btn-danger {
-    background: #dc3545;
-    color: #fff;
+    background: var(--btn-danger-bg);
+    color: var(--tab-active-text);
 }
 
 .btn-danger:hover {
-    background: #b02a37;
+    background: var(--btn-danger-hover);
 }
 
 .list-group {
@@ -133,27 +193,29 @@ h1 {
 
 .list-group-item {
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--list-item-border);
     border-radius: 4px;
     margin-bottom: 5px;
+    background: var(--list-item-bg);
+    color: var(--text-color);
 }
 
 .list-group-item:hover {
-    background: #f8f9fa;
+    background: var(--input-bg);
 }
 
 .loading {
-    color: #007bff;
+    color: var(--loading-color);
     font-style: italic;
 }
 
 .error {
-    color: #dc3545;
+    color: var(--error-color);
     font-weight: bold;
 }
 
 .config-section {
-    background: #f8f9fa;
+    background: var(--config-section-bg);
 }
 
 .button-group {
@@ -164,6 +226,22 @@ h1 {
 
 .button-group .btn {
     flex: 1;
+}
+
+.theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: transform 0.2s;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
 }
 
 @media (max-width: 600px) {
@@ -188,5 +266,11 @@ h1 {
 
     .button-group .btn {
         width: 100%;
+    }
+
+    .theme-toggle {
+        top: 10px;
+        right: 10px;
+        font-size: 20px;
     }
 }

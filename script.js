@@ -13,6 +13,13 @@ const COORDENADAS_PADRAO = {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[script.js] DOM carregado. Iniciando aplicação...');
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeToggle').textContent = '🌙';
+    } else {
+        document.body.classList.add('light-mode');
+    }
     await esperarLeaflet();
     inicializarMapa();
     if (typeof map !== 'undefined' && map) {
@@ -65,6 +72,23 @@ function configurarListeners() {
     const btnGo = document.getElementById('btnGo');
     if (btnGo) btnGo.addEventListener('click', iniciarRota);
     else console.warn('[script.js] Botão #btnGo não encontrado.');
+
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        console.log('[script.js] Botão #themeToggle encontrado, adicionando listener.');
+        themeToggle.addEventListener('click', () => {
+            console.log('[script.js] Botão de tema clicado.');
+            const isDarkMode = !document.body.classList.contains('dark-mode');
+            document.body.classList.remove('dark-mode', 'light-mode');
+            document.body.classList.add(isDarkMode ? 'dark-mode' : 'light-mode');
+            themeToggle.textContent = isDarkMode ? '🌙' : '☀️';
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            atualizarTilesMapa(isDarkMode);
+            console.log('[script.js] Tema alternado para:', isDarkMode ? 'escuro' : 'claro');
+        });
+    } else {
+        console.warn('[script.js] Botão #themeToggle não encontrado.');
+    }
 
     console.log('[script.js] Listeners da aba Rotas configurados.');
 }

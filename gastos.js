@@ -1,191 +1,144 @@
+let gastos = JSON.parse(localStorage.getItem('gastos')) || [];
+
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[gastos.js] Configurando listeners para Gastos...');
-    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
-    if (btnSalvarGasto) btnSalvarGasto.addEventListener('click', salvarGasto);
-    else console.warn('[gastos.js] Botão #btnSalvarGasto não encontrado.');
-
-    const btnSalvarKm = document.getElementById('btnSalvarKmPorLitro');
-    if (btnSalvarKm) btnSalvarKm.addEventListener('click', salvarKmPorLitro);
-    else console.warn('[gastos.js] Botão #btnSalvarKmPorLitro não encontrado.');
-
-    const btnSalvarPreco = document.getElementById('btnSalvarPrecoPorLitro');
-    if (btnSalvarPreco) btnSalvarPreco.addEventListener('click', salvarPrecoPorLitro);
-    else console.warn('[gastos.js] Botão #btnSalvarPrecoPorLitro não encontrado.');
-
-    const btnSalvarAppNavegacao = document.getElementById('btnSalvarAppNavegacao');
-    if (btnSalvarAppNavegacao) btnSalvarAppNavegacao.addEventListener('click', salvarAppNavegacao);
-    else console.warn('[gastos.js] Botão #btnSalvarAppNavegacao não encontrado.');
-
-    carregarGastos();
-    carregarKmPorLitro();
-    carregarPrecoPorLitro();
-    carregarAppNavegacao();
+    console.log('[gastos.js] DOM carregado. Configurando aba Gastos...');
+    carregarConfiguracoes();
+    atualizarListaGastos();
+    configurarListenersGastos();
 });
 
-function salvarGasto() {
-    const tipoInput = document.getElementById('tipoGasto');
-    const valorInput = document.getElementById('valorGasto');
-    if (!tipoInput || !valorInput) {
-        console.error('[gastos.js] Elementos do DOM ausentes.');
-        return;
-    }
-
-    const tipo = tipoInput.value.trim();
-    const valor = parseFloat(valorInput.value);
-    if (!tipo || isNaN(valor) || valor <= 0) {
-        alert('Preencha tipo e valor positivo!');
-        return;
-    }
-
-    const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
-    const novoGasto = {
-        id: Date.now(),
-        tipo,
-        valor,
-        data: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    };
-    gastos.push(novoGasto);
-    localStorage.setItem('gastos', JSON.stringify(gastos));
-    console.log('[gastos.js] Gasto salvo:', novoGasto);
-    carregarGastos();
-    tipoInput.value = '';
-    valorInput.value = '';
-    tipoInput.focus();
-}
-
-function carregarGastos() {
-    const listaGastosUl = document.getElementById('listaGastos');
-    const totalGastosSpan = document.getElementById('totalGastos');
-    if (!listaGastosUl || !totalGastosSpan) {
-        console.error('[gastos.js] Elementos do DOM ausentes.');
-        return;
-    }
-
-    const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
-    listaGastosUl.innerHTML = '';
-    let total = 0;
-
-    if (gastos.length === 0) {
-        listaGastosUl.innerHTML = '<li class="list-group-item text-muted">Nenhum gasto registrado.</li>';
+function configurarListenersGastos() {
+    console.log('[gastos.js] Configurando listeners da aba Gastos...');
+    const btnSalvarKmPorLitro = document.getElementById('btnSalvarKmPorLitro');
+    if (btnSalvarKmPorLitro) {
+        btnSalvarKmPorLitro.addEventListener('click', salvarKmPorLitro);
     } else {
-        gastos.sort((a, b) => b.id - a.id);
-        gastos.forEach(gasto => {
-            total += gasto.valor;
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `
-                <span>${gasto.data}: ${gasto.tipo} - <strong>R$ ${gasto.valor.toFixed(2)}</strong></span>
-                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGasto(${gasto.id})" title="Excluir Gasto">×</button>
-            `;
-            listaGastosUl.appendChild(li);
-        });
+        console.warn('[gastos.js] Botão #btnSalvarKmPorLitro não encontrado.');
     }
-    totalGastosSpan.textContent = total.toFixed(2);
-    console.log('[gastos.js] Gastos carregados. Total:', total.toFixed(2));
+
+    const btnSalvarPrecoPorLitro = document.getElementById('btnSalvarPrecoPorLitro');
+    if (btnSalvarPrecoPorLitro) {
+        btnSalvarPrecoPorLitro.addEventListener('click', salvarPrecoPorLitro);
+    } else {
+        console.warn('[gastos.js] Botão #btnSalvarPrecoPorLitro não encontrado.');
+    }
+
+    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
+    if (btnSalvarGasto) {
+        btnSalvarGasto.addEventListener('click', adicionarGasto);
+    } else {
+        console.warn('[gastos.js] Botão #btnSalvarGasto não encontrado.');
+    }
 }
 
-// Função global para ser acessível pelo botão de exclusão no DOM
-window.excluirGasto = function(idGasto) {
-    if (!confirm('Tem certeza que deseja excluir este gasto?')) return;
-    let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
-    gastos = gastos.filter(gasto => gasto.id !== idGasto);
-    localStorage.setItem('gastos', JSON.stringify(gastos));
-    console.log('[gastos.js] Gasto excluído:', idGasto);
-    carregarGastos();
-};
+function carregarConfiguracoes() {
+    console.log('[gastos.js] Carregando configurações salvas...');
+    const kmPorLitro = localStorage.getItem('kmPorLitro');
+    const precoPorLitro = localStorage.getItem('precoPorLitro');
+    if (kmPorLitro) {
+        document.getElementById('kmPorLitro').value = kmPorLitro;
+        console.log('[gastos.js] Km por litro carregado:', kmPorLitro);
+    }
+    if (precoPorLitro) {
+        document.getElementById('precoPorLitro').value = precoPorLitro;
+        console.log('[gastos.js] Preço por litro carregado:', precoPorLitro);
+    }
+}
 
 function salvarKmPorLitro() {
-    const kmPorLitroInput = document.getElementById('kmPorLitro');
-    const feedbackDiv = document.getElementById('kmPorLitroFeedback');
-    if (!kmPorLitroInput || !feedbackDiv) {
-        console.error('[gastos.js] Elementos do DOM ausentes.');
-        return;
-    }
-
-    const kmPorLitro = parseFloat(kmPorLitroInput.value);
+    const kmPorLitro = parseFloat(document.getElementById('kmPorLitro').value);
+    const feedback = document.getElementById('kmPorLitroFeedback');
     if (isNaN(kmPorLitro) || kmPorLitro <= 0) {
-        alert('Digite um valor numérico positivo para Km/Litro!');
+        feedback.style.display = 'block';
+        feedback.className = 'form-text text-danger';
+        feedback.textContent = 'Por favor, insira um valor válido.';
+        console.warn('[gastos.js] Km por litro inválido:', kmPorLitro);
         return;
     }
-
     localStorage.setItem('kmPorLitro', kmPorLitro);
-    console.log('[gastos.js] Km/Litro salvo:', kmPorLitro);
-    feedbackDiv.style.display = 'block';
-    setTimeout(() => feedbackDiv.style.display = 'none', 3000);
-    carregarKmPorLitro();
-}
-
-function carregarKmPorLitro() {
-    const kmPorLitroInput = document.getElementById('kmPorLitro');
-    if (!kmPorLitroInput) {
-        console.error('[gastos.js] Elemento #kmPorLitro não encontrado.');
-        return;
-    }
-    const kmPorLitro = localStorage.getItem('kmPorLitro') || '';
-    kmPorLitroInput.value = kmPorLitro;
-    console.log('[gastos.js] Km/Litro carregado:', kmPorLitro || 'N/A');
+    feedback.className = 'form-text text-success';
+    feedback.textContent = 'Consumo salvo com sucesso!';
+    feedback.style.display = 'block';
+    setTimeout(() => feedback.style.display = 'none', 3000);
+    console.log('[gastos.js] Km por litro salvo:', kmPorLitro);
 }
 
 function salvarPrecoPorLitro() {
-    const precoPorLitroInput = document.getElementById('precoPorLitro');
-    const feedbackDiv = document.getElementById('precoPorLitroFeedback');
-    if (!precoPorLitroInput || !feedbackDiv) {
-        console.error('[gastos.js] Elementos do DOM ausentes.');
-        return;
-    }
-
-    const precoPorLitro = parseFloat(precoPorLitroInput.value);
+    const precoPorLitro = parseFloat(document.getElementById('precoPorLitro').value);
+    const feedback = document.getElementById('precoPorLitroFeedback');
     if (isNaN(precoPorLitro) || precoPorLitro <= 0) {
-        alert('Digite um valor numérico positivo para Preço/Litro!');
+        feedback.style.display = 'block';
+        feedback.className = 'form-text text-danger';
+        feedback.textContent = 'Por favor, insira um valor válido.';
+        console.warn('[gastos.js] Preço por litro inválido:', precoPorLitro);
         return;
     }
-
     localStorage.setItem('precoPorLitro', precoPorLitro);
-    console.log('[gastos.js] Preço/Litro salvo:', precoPorLitro);
-    feedbackDiv.style.display = 'block';
-    setTimeout(() => feedbackDiv.style.display = 'none', 3000);
-    carregarPrecoPorLitro();
+    feedback.className = 'form-text text-success';
+    feedback.textContent = 'Preço salvo com sucesso!';
+    feedback.style.display = 'block';
+    setTimeout(() => feedback.style.display = 'none', 3000);
+    console.log('[gastos.js] Preço por litro salvo:', precoPorLitro);
 }
 
-function carregarPrecoPorLitro() {
-    const precoPorLitroInput = document.getElementById('precoPorLitro');
-    if (!precoPorLitroInput) {
-        console.error('[gastos.js] Elemento #precoPorLitro não encontrado.');
+function adicionarGasto() {
+    const tipoGasto = document.getElementById('tipoGasto').value.trim();
+    const valorGasto = parseFloat(document.getElementById('valorGasto').value);
+    if (!tipoGasto || isNaN(valorGasto) || valorGasto <= 0) {
+        alert('Por favor, preencha o tipo de gasto e um valor válido.');
+        console.warn('[gastos.js] Dados de gasto inválidos:', { tipoGasto, valorGasto });
         return;
     }
-    const precoPorLitro = localStorage.getItem('precoPorLitro') || '';
-    precoPorLitroInput.value = precoPorLitro;
-    console.log('[gastos.js] Preço/Litro carregado:', precoPorLitro || 'N/A');
+
+    const gasto = {
+        id: Date.now(),
+        tipo: tipoGasto,
+        valor: valorGasto,
+        data: new Date().toLocaleString('pt-BR')
+    };
+
+    gastos.push(gasto);
+    localStorage.setItem('gastos', JSON.stringify(gastos));
+    atualizarListaGastos();
+    document.getElementById('tipoGasto').value = '';
+    document.getElementById('valorGasto').value = '';
+    console.log('[gastos.js] Gasto adicionado:', gasto);
 }
 
-function salvarAppNavegacao() {
-    const appNavegacaoSelect = document.getElementById('appNavegacao');
-    const feedbackDiv = document.getElementById('appNavegacaoFeedback');
-    if (!appNavegacaoSelect || !feedbackDiv) {
-        console.error('[gastos.js] Elementos do DOM ausentes.');
+function atualizarListaGastos() {
+    const listaGastos = document.getElementById('listaGastos');
+    const totalGastosSpan = document.getElementById('totalGastos');
+    if (!listaGastos || !totalGastosSpan) {
+        console.error('[gastos.js] Elementos #listaGastos ou #totalGastos não encontrados.');
         return;
     }
 
-    const appNavegacao = appNavegacaoSelect.value;
-    if (!appNavegacao || !['google_maps', 'waze'].includes(appNavegacao)) {
-        alert('Selecione um aplicativo de navegação válido!');
+    listaGastos.innerHTML = '';
+    if (gastos.length === 0) {
+        listaGastos.innerHTML = '<li class="list-group-item">Nenhum gasto registrado.</li>';
+        totalGastosSpan.textContent = '0.00';
+        console.log('[gastos.js] Nenhum gasto para exibir.');
         return;
     }
 
-    localStorage.setItem('appNavegacao', appNavegacao);
-    console.log('[gastos.js] Aplicativo de navegação salvo:', appNavegacao);
-    feedbackDiv.style.display = 'block';
-    setTimeout(() => feedbackDiv.style.display = 'none', 3000);
-    carregarAppNavegacao();
+    gastos.forEach(gasto => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+            ${gasto.tipo} - R$ ${gasto.valor.toFixed(2)} <small class="text-muted">${gasto.data}</small>
+            <button class="btn btn-danger btn-sm" onclick="removerGasto(${gasto.id})">×</button>
+        `;
+        listaGastos.appendChild(li);
+    });
+
+    const total = gastos.reduce((sum, gasto) => sum + gasto.valor, 0);
+    totalGastosSpan.textContent = total.toFixed(2);
+    console.log('[gastos.js] Lista de gastos atualizada. Total: R$', total.toFixed(2));
 }
 
-function carregarAppNavegacao() {
-    const appNavegacaoSelect = document.getElementById('appNavegacao');
-    if (!appNavegacaoSelect) {
-        console.error('[gastos.js] Elemento #appNavegacao não encontrado.');
-        return;
-    }
-    const appNavegacao = localStorage.getItem('appNavegacao') || 'google_maps';
-    appNavegacaoSelect.value = appNavegacao;
-    console.log('[gastos.js] Aplicativo de navegação carregado:', appNavegacao);
+function removerGasto(id) {
+    gastos = gastos.filter(gasto => gasto.id !== id);
+    localStorage.setItem('gastos', JSON.stringify(gastos));
+    atualizarListaGastos();
+    console.log('[gastos.js] Gasto removido. ID:', id);
 }

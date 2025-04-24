@@ -1,6 +1,7 @@
 let map = null;
 let routeLayer = null;
 let markersLayer = null;
+let tileLayer = null;
 
 function inicializarMapa(localizacaoInicial = null) {
     const fallbackLocalizacao = [-23.1791, -45.8872];
@@ -8,6 +9,7 @@ function inicializarMapa(localizacaoInicial = null) {
         ? localizacaoInicial
         : fallbackLocalizacao;
     const zoomInicial = 13;
+    const isDarkMode = document.body.classList.contains('dark-mode');
 
     const mapaDiv = document.getElementById('map');
     if (!mapaDiv) {
@@ -16,6 +18,7 @@ function inicializarMapa(localizacaoInicial = null) {
             '<div class="error">Erro: O elemento do mapa (#map) não foi encontrado.</div>');
         return;
     }
+    console.log('[mapa.js] Elemento #map encontrado, inicializando mapa...');
 
     if (map) {
         console.log('[mapa.js] Mapa já inicializado. Ajustando visão para:', centroInicial);
@@ -37,8 +40,15 @@ function inicializarMapa(localizacaoInicial = null) {
             zoom: zoomInicial,
         });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        const tileUrl = isDarkMode
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const tileAttribution = isDarkMode
+            ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
+            : '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+        tileLayer = L.tileLayer(tileUrl, {
+            attribution: tileAttribution,
             maxZoom: 19,
             minZoom: 5
         }).addTo(map);
@@ -60,6 +70,31 @@ function inicializarMapa(localizacaoInicial = null) {
         console.error('[mapa.js] Erro ao inicializar o mapa Leaflet:', error);
         mapaDiv.innerHTML = '<p style="color:red; font-weight: bold;">Falha ao carregar o mapa. Verifique a conexão ou recarregue a página.</p>';
     }
+}
+
+function atualizarTilesMapa(isDarkMode) {
+    if (!map || !tileLayer) {
+        console.warn('[mapa.js] Mapa ou camada de tiles não inicializada.');
+        return;
+    }
+
+    console.log('[mapa.js] Atualizando tiles para tema:', isDarkMode ? 'escuro' : 'claro');
+    tileLayer.remove();
+
+    const tileUrl = isDarkMode
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileAttribution = isDarkMode
+        ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
+        : '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+    tileLayer = L.tileLayer(tileUrl, {
+        attribution: tileAttribution,
+        maxZoom: 19,
+        minZoom: 5
+    }).addTo(map);
+
+    setTimeout(() => map.invalidateSize(), 100);
 }
 
 function centralizarMapa(lat, lon, zoom = 15) {
@@ -173,39 +208,30 @@ function desenharRota(geometry) {
             lineCap: 'round'
         }).addTo(routeLayer);
 
-        map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
         setTimeout(() => map.invalidateSize(), 100);
-        console.log('[mapa.js] Linha da rota desenhada com sucesso!');
+        console.log('[mapa.js] Rota desenhada com sucesso.');
     } else {
         console.warn('[mapa.js] Nenhuma coordenada válida para desenhar a rota.');
     }
 }
 
-function adicionarMarcadorPosto(lat, lon, nome) {
-    if (!map || !markersLayer) {
-        console.error('[mapa.js] Mapa ou camada de marcadores não inicializada.');
+function limparCamadasDoMapa(tipo = 'tudo') {
+    if (!map) {
+        console.warn('[mapa.js] Mapa não inicializado.');
         return;
     }
 
-    const iconePosto = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-
-    console.log(`[mapa.js] Adicionando marcador de posto: ${nome || 'Desconhecido'} em [${lat}, ${lon}]`);
-    L.marker([lat, lon], { icon: iconePosto })
-        .bindPopup(`<b>${nome || "Posto de Combustível"}</b>`)
-        .addTo(markersLayer);
-}
-
-function limparCamadasDoMapa(tipo = 'tudo') {
-    if (!map) return;
-    console.log(`[mapa.js] Limpando camadas do mapa: ${tipo}`);
     if (tipo === 'tudo' || tipo === 'rota') {
-        routeLayer?.clearLayers();
+        if (routeLayer) {
+            routeLayer.clearLayers();
+            console.log('[mapa.js] Camada de rota limpa.');
+        }
     }
     if (tipo === 'tudo' || tipo === 'marcadores') {
-        markersLayer?.clearLayers();
+        if (markersLayer) {
+            markersLayer.clearLayers();
+            console.log('[mapa.js] Camada de marcadores limpa.');
+        }
     }
 }
