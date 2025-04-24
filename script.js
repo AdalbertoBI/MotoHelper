@@ -1,10 +1,11 @@
 // Configurações globais
-const OPENROUTE_API_KEY = '5b3ce3597851110001cf62488d59f67c5c15452c92c89eb27e1004c6';
+const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58';
 let paradasCount = 1;
 let localizacaoAtual = null;
 let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca')) || {};
 let rotaCoordenadas = [];
 let timeoutBusca = null;
+let mapaPronto = false; // Variável para rastrear se o mapa está pronto
 
 // Coordenadas padrão para São José dos Campos, SP
 const COORDENADAS_PADRAO = {
@@ -13,7 +14,13 @@ const COORDENADAS_PADRAO = {
 };
 
 // Inicialização quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM carregado, iniciando inicialização...');
+
+    // Inicializa o mapa imediatamente com a localização padrão
+    await esperarLeaflet();
+    usarLocalizacaoPadrao(); // Força a inicialização do mapa
+
     carregarGastos();
     carregarKmPorLitro();
     carregarPrecoPorLitro();
@@ -24,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     configurarEventosBusca();
-    obterLocalizacaoAtual();
+    obterLocalizacaoAtual(); // Tenta obter a localização atual, mas o mapa já está inicializado
 });
 
 // Função para adicionar paradas
@@ -66,8 +73,7 @@ function configurarEventosBusca() {
 // Obtém a localização atual do usuário
 function obterLocalizacaoAtual() {
     if (!navigator.geolocation) {
-        alert('Geolocalização não suportada pelo navegador. Usando localização padrão.');
-        usarLocalizacaoPadrao();
+        console.log('Geolocalização não suportada pelo navegador.');
         return;
     }
 
@@ -81,7 +87,7 @@ function obterLocalizacaoAtual() {
             };
             
             try {
-                inicializarMapa([localizacaoAtual.lat, localizacaoAtual.lon]);
+                centralizarMapa(localizacaoAtual.lat, localizacaoAtual.lon);
                 
                 // Tenta obter o endereço da localização
                 const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}&addressdetails=1`;
@@ -100,8 +106,6 @@ function obterLocalizacaoAtual() {
         },
         (error) => {
             console.error('Erro ao obter localização:', error);
-            alert('Não foi possível obter sua localização. Usando localização padrão.');
-            usarLocalizacaoPadrao();
             document.getElementById('carregandoLocalizacao').style.display = 'none';
         },
         {
@@ -111,10 +115,28 @@ function obterLocalizacaoAtual() {
     );
 }
 
+// Função para garantir que o Leaflet está carregado
+function esperarLeaflet() {
+    return new Promise((resolve) => {
+        const checkLeaflet = () => {
+            if (typeof L !== 'undefined') {
+                console.log('Leaflet carregado com sucesso!');
+                resolve();
+            } else {
+                console.log('Aguardando Leaflet carregar...');
+                setTimeout(checkLeaflet, 100);
+            }
+        };
+        checkLeaflet();
+    });
+}
+
 // Usa localização padrão (São José dos Campos)
 function usarLocalizacaoPadrao() {
     localizacaoAtual = COORDENADAS_PADRAO;
     inicializarMapa([localizacaoAtual.lat, localizacaoAtual.lon]);
+    mapaPronto = true; // Marca que o mapa está pronto
+    console.log('Mapa inicializado com localização padrão.');
     document.getElementById('origem').value = 'São José dos Campos, São Paulo';
 }
 
@@ -219,13 +241,20 @@ async function geocodificar(endereco) {
 
 // Calcula a rota entre os pontos
 async function calcularRota() {
+    // Verifica se o mapa está pronto
+    if (!mapaPronto) {
+        alert("Aguarde o mapa carregar antes de calcular a rota.");
+        console.error('Tentativa de calcular rota antes do mapa estar pronto.');
+        return;
+    }
+
     const origem = document.getElementById('origem').value.trim();
     const destino = document.getElementById('destino').value.trim();
     const paradas = [];
 
     for (let i = 1; i <= paradasCount; i++) {
-        const parada = document.getElementById(`parada${i}`).value;
-        if (parada) paradas.push(parada.trim());
+        const parada = document.getElementById(`parada${i}`);
+        if (parada && parada.value) paradas.push(parada.value.trim());
     }
 
     if (!origem || !destino) {
@@ -248,15 +277,13 @@ async function calcularRota() {
         const coords = [coordsOrigem, ...coordsParadas.filter(c => c !== null), coordsDestino];
         rotaCoordenadas = coords;
 
-        const response = await fetch(`https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                coordinates: coords,
-                units: 'km',
-                instructions: true,
-                radiuses: Array(coords.length).fill(5000)
-            })
+        // Monta a URL com os pontos
+        const points = coords.map(coord => `point=${coord[0]},${coord[1]}`).join('&');
+        const url = `https://graphhopper.com/api/1/route?${points}&vehicle=car&locale=pt&instructions=true&key=${GRAPHHOPPER_API_KEY}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
         });
 
         if (!response.ok) {
@@ -273,10 +300,10 @@ async function calcularRota() {
 
 // Processa a resposta da API de rotas
 function processarRespostaRota(data, coordsOrigem, coordsParadas, coordsDestino) {
-    if (data.features && data.features.length > 0) {
-        const feature = data.features[0];
-        const distancia = feature.properties.segments.reduce((sum, seg) => sum + seg.distance, 0) / 1000; // em km
-        const geometry = feature.geometry.coordinates;
+    if (data.paths && data.paths.length > 0) {
+        const path = data.paths[0];
+        const distancia = path.distance / 1000; // em km
+        const geometry = path.points.coordinates;
 
         // Atualiza o mapa
         adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino);
@@ -301,10 +328,10 @@ function processarRespostaRota(data, coordsOrigem, coordsParadas, coordsDestino)
         }
 
         // Adiciona instruções
-        if (feature.properties.segments[0].steps) {
+        if (path.instructions) {
             resultadoHTML += `<h4>Instruções:</h4><ol>`;
-            feature.properties.segments[0].steps.forEach(step => {
-                resultadoHTML += `<li>${step.instruction} (${(step.distance/1000).toFixed(2)} km)</li>`;
+            path.instructions.forEach(step => {
+                resultadoHTML += `<li>${step.text} (${(step.distance/1000).toFixed(2)} km)</li>`;
             });
             resultadoHTML += `</ol>`;
         }

@@ -8,24 +8,46 @@ function inicializarMapa(localizacaoInicial) {
     const centroInicial = localizacaoInicial || fallbackLocalizacao;
 
     if (mapa) {
+        console.log('Mapa já inicializado, apenas ajustando a visualização.');
         mapa.setView(centroInicial, 13);
         return;
     }
 
-    mapa = L.map('mapa').setView(centroInicial, 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 18
-    }).addTo(mapa);
+    const mapaDiv = document.getElementById('mapa');
+    if (!mapaDiv) {
+        console.error('Elemento com ID "mapa" não encontrado no HTML.');
+        return;
+    }
+
+    console.log('Inicializando o mapa na posição:', centroInicial);
+    try {
+        mapa = L.map('mapa').setView(centroInicial, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18
+        }).addTo(mapa);
+        console.log('Mapa inicializado com sucesso!');
+    } catch (error) {
+        console.error('Erro ao inicializar o mapa:', error);
+    }
 }
 
 function centralizarMapa(lat, lon) {
     if (mapa) {
         mapa.setView([lat, lon], 13);
+        console.log('Mapa centralizado em:', [lat, lon]);
+    } else {
+        console.error('Mapa não está inicializado para centralizar.');
     }
 }
 
 function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
+    if (!mapa) {
+        console.error('Mapa não inicializado ao tentar adicionar marcadores.');
+        return;
+    }
+
+    console.log('Adicionando marcadores...');
     // Remove marcadores existentes
     marcadores.forEach(marcador => mapa.removeLayer(marcador));
     marcadores = [];
@@ -75,9 +97,17 @@ function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
         .bindPopup('Destino')
         .addTo(mapa);
     marcadores.push(marcadorDestino);
+
+    console.log('Marcadores adicionados com sucesso!');
 }
 
 function desenharRota(geometry) {
+    if (!mapa) {
+        console.error('Mapa não inicializado ao tentar desenhar a rota.');
+        return;
+    }
+
+    console.log('Desenhando rota...');
     if (rotaLayer) {
         mapa.removeLayer(rotaLayer);
     }
@@ -91,6 +121,7 @@ function desenharRota(geometry) {
     
     mapa.fitBounds(polyline.getBounds());
     rotaLayer = polyline;
+    console.log('Rota desenhada com sucesso!');
 }
 
 function inicializarMapaPostos(lat, lng) {
