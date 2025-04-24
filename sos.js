@@ -13,10 +13,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function salvarContatos() {
     const contato1Nome = document.getElementById('contato1Nome').value.trim();
-    const contato1Telefone = document.getElementById('contato1Telefone').value.trim();
+    let contato1Telefone = document.getElementById('contato1Telefone').value.trim();
     const contato2Nome = document.getElementById('contato2Nome').value.trim();
-    const contato2Telefone = document.getElementById('contato2Telefone').value.trim();
+    let contato2Telefone = document.getElementById('contato2Telefone').value.trim();
     const feedbackDiv = document.getElementById('contatosFeedback');
+
+    // Validação dos números de telefone
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/; // Formato internacional básico (ex.: +5511999999999)
+    if (contato1Telefone && !phoneRegex.test(contato1Telefone)) {
+        alert('Telefone do Contato 1 inválido! Use o formato internacional, ex.: +5511999999999');
+        return;
+    }
+    if (contato2Telefone && !phoneRegex.test(contato2Telefone)) {
+        alert('Telefone do Contato 2 inválido! Use o formato internacional, ex.: +5511999999999');
+        return;
+    }
+
+    // Remover caracteres desnecessários e garantir o formato
+    if (contato1Telefone) {
+        contato1Telefone = contato1Telefone.replace(/\s|-/g, '');
+        if (!contato1Telefone.startsWith('+')) {
+            contato1Telefone = '+' + contato1Telefone;
+        }
+    }
+    if (contato2Telefone) {
+        contato2Telefone = contato2Telefone.replace(/\s|-/g, '');
+        if (!contato2Telefone.startsWith('+')) {
+            contato2Telefone = '+' + contato2Telefone;
+        }
+    }
 
     const contatos = [];
     if (contato1Nome && contato1Telefone) {
@@ -68,22 +93,45 @@ function enviarSOS() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             const acc = pos.coords.accuracy;
-            const mensagem = `🚨 ALERTA SOS 🚨\nLocalização: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${acc.toFixed(0)}m)\nLink: https://www.google.com/maps?q=${lat},${lng}`;
+            const mensagem = `🚨 ALERTA SOS 🚨\nEstou precisando de ajuda!\nMinha localização: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${acc.toFixed(0)}m)\nLink: https://www.google.com/maps?q=${lat},${lng}`;
             console.log('[sos.js] SOS:', mensagem);
 
             const contatos = JSON.parse(localStorage.getItem('contatosEmergencia') || '[]');
             let mensagemCompleta = mensagem;
+
             if (contatos.length > 0) {
-                mensagemCompleta += '\n\nEnviado para:';
+                mensagemCompleta += '\n\nEnviando para:';
+                let contatosEnviados = 0;
                 contatos.forEach(contato => {
                     mensagemCompleta += `\n- ${contato.nome} (${contato.telefone})`;
-                    console.log(`[sos.js] Simulando envio para ${contato.nome}: ${contato.telefone}`);
+                    console.log(`[sos.js] Preparando envio para ${contato.nome}: ${contato.telefone}`);
+
+                    // Gerar link do WhatsApp
+                    const telefoneLimpo = contato.telefone.replace(/[^0-9+]/g, '');
+                    const mensagemEncoded = encodeURIComponent(mensagem);
+                    const whatsappUrl = `https://wa.me/${telefoneLimpo}?text=${mensagemEncoded}`;
+
+                    try {
+                        // Tentar abrir o WhatsApp
+                        window.open(whatsappUrl, '_blank');
+                        contatosEnviados++;
+                    } catch (error) {
+                        console.error(`[sos.js] Erro ao abrir WhatsApp para ${contato.nome}:`, error);
+                        mensagemCompleta += `\n(Falha ao abrir WhatsApp para ${contato.nome})`;
+                    }
                 });
+
+                if (contatosEnviados === 0) {
+                    mensagemCompleta += '\n\nNenhuma mensagem foi enviada. Verifique se o WhatsApp está instalado e se os números estão corretos.';
+                } else {
+                    mensagemCompleta += `\n\n${contatosEnviados} mensagem(s) preparada(s) para envio via WhatsApp. Confirme o envio no aplicativo.`;
+                }
             } else {
                 mensagemCompleta += '\n\nNenhum contato de emergência cadastrado.';
             }
 
-            alert(mensagemCompleta + '\n\n(Simulação. Nenhuma mensagem enviada.)');
+            // Exibir alerta com o resultado (incluindo simulação se não houver contatos)
+            alert(mensagemCompleta);
         },
         (error) => {
             console.error('[sos.js] Erro na localização para SOS:', error.message);
