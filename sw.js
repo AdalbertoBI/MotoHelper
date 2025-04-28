@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motoca-br-v2';
+const CACHE_NAME = 'motoca-br-v3'; // Alterado para forçar atualização
 const urlsToCache = [
     '/',
     '/index.html',
@@ -10,15 +10,16 @@ const urlsToCache = [
     '/pesquisa.js',
     '/financeiro.js',
     '/sos.js',
+    '/img/icon.png', // Adicionado ícone do PWA
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 self.addEventListener('install', event => {
-    console.log('[sw.js] Service Worker: Instalando...');
+    // console.log('[sw.js] Service Worker: Instalando...');
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
-            console.log('[sw.js] Cache aberto, adicionando arquivos...');
+            // console.log('[sw.js] Cache aberto, adicionando arquivos...');
             return cache.addAll(urlsToCache).catch(err => {
                 console.error('[sw.js] Erro ao adicionar arquivos ao cache:', err);
             });
@@ -28,33 +29,33 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-    console.log('[sw.js] Service Worker: Ativando...');
+    // console.log('[sw.js] Service Worker: Ativando...');
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cache => {
                     if (cache !== CACHE_NAME) {
-                        console.log('[sw.js] Deletando cache antigo:', cache);
+                        // console.log('[sw.js] Deletando cache antigo:', cache);
                         return caches.delete(cache);
                     }
                 })
             );
         }).then(() => {
-            console.log('[sw.js] Cache antigo limpo.');
+            // console.log('[sw.js] Cache antigo limpo.');
             return self.clients.claim();
         })
     );
 });
 
 self.addEventListener('fetch', event => {
-    console.log('[sw.js] Fetch:', event.request.url);
+    // console.log('[sw.js] Fetch:', event.request.url);
     event.respondWith(
         caches.match(event.request).then(response => {
             if (response) {
-                console.log('[sw.js] Servindo do cache:', event.request.url);
+                // console.log('[sw.js] Servindo do cache:', event.request.url);
                 return response;
             }
-            console.log('[sw.js] Buscando na rede:', event.request.url);
+            // console.log('[sw.js] Buscando na rede:', event.request.url);
             return fetch(event.request).then(networkResponse => {
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
                     return networkResponse;
@@ -62,7 +63,7 @@ self.addEventListener('fetch', event => {
                 const responseToCache = networkResponse.clone();
                 caches.open(CACHE_NAME).then(cache => {
                     cache.put(event.request, responseToCache);
-                    console.log('[sw.js] Armazenado no cache:', event.request.url);
+                    // console.log('[sw.js] Armazenado no cache:', event.request.url);
                 });
                 return networkResponse;
             }).catch(err => {

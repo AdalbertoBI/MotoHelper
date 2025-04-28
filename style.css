@@ -21,6 +21,7 @@
     --config-section-bg: #f8f9fa;
     --error-color: #dc3545;
     --loading-color: #007bff;
+    --saved-border: #28a745; /* Nova cor para feedback de salvamento */
 }
 
 body.dark-mode {
@@ -45,6 +46,7 @@ body.dark-mode {
     --config-section-bg: #2c2c2c;
     --error-color: #ff6666;
     --loading-color: #4da8ff;
+    --saved-border: #1e7e34;
 }
 
 body.light-mode {
@@ -140,6 +142,12 @@ h1 {
     border-color: var(--btn-primary-bg);
     outline: none;
     box-shadow: 0 0 5px rgba(0,123,255,0.3);
+}
+
+.form-control.saved {
+    border-color: var(--saved-border);
+    box-shadow: 0 0 5px rgba(40,167,69,0.5); /* Efeito de destaque para salvamento */
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .btn {
@@ -244,6 +252,25 @@ h1 {
     transform: scale(1.1);
 }
 
+.form-text {
+    margin-top: 5px;
+    font-size: 0.9em;
+    line-height: 1.4;
+    padding: 4px 8px;
+    border-radius: 3px;
+    min-height: 20px; /* Garante visibilidade */
+}
+
+.form-text.text-success {
+    background-color: rgba(40,167,69,0.1);
+    color: var(--btn-success-bg);
+}
+
+.form-text.text-danger {
+    background-color: rgba(220,53,69,0.1);
+    color: var(--error-color);
+}
+
 @media (max-width: 600px) {
     .container {
         padding: 10px;
@@ -272,5 +299,10 @@ h1 {
         top: 10px;
         right: 10px;
         font-size: 20px;
+    }
+
+    .form-text {
+        font-size: 0.85em;
+        padding: 6px 10px;
     }
 }
