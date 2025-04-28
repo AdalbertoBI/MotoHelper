@@ -6,7 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[financeiro.js] localStorage disponível.');
     } catch (e) {
         console.error('[financeiro.js] localStorage não disponível:', e);
-        alert('Erro: Armazenamento local não disponível. Verifique as configurações do navegador ou permissões de armazenamento.');
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error';
+        errorDiv.textContent = 'Erro: Armazenamento local não disponível. Desative o modo anônimo ou ajuste as configurações de privacidade do navegador.';
+        document.querySelector('.container')?.prepend(errorDiv);
         return;
     }
 
@@ -34,29 +37,81 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarGanhos();
 });
 
+// Função utilitária para salvar no localStorage
+function safeLocalStorageSet(key, value) {
+    try {
+        limparCacheSeNecessario();
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (e) {
+        console.error(`[financeiro.js] Erro ao salvar ${key} no localStorage:`, e);
+        throw e;
+    }
+}
+
+// Função utilitária para carregar do localStorage
+function safeLocalStorageGet(key, defaultValue = []) {
+    try {
+        const data = localStorage.getItem(key);
+        if (data === null) return defaultValue;
+        const parsed = JSON.parse(data);
+        if (!Array.isArray(parsed) && key !== 'kmPorLitro' && key !== 'precoPorLitro') throw new Error(`Dados inválidos em ${key}`);
+        return parsed;
+    } catch (e) {
+        console.error(`[financeiro.js] Erro ao carregar ${key} do localStorage:`, e);
+        localStorage.setItem(key, JSON.stringify(defaultValue));
+        return defaultValue;
+    }
+}
+
+// Função para estimar o tamanho do localStorage
+function estimarTamanhoLocalStorage() {
+    let total = 0;
+    for (let x in localStorage) {
+        if (localStorage.hasOwnProperty(x)) {
+            total += ((localStorage[x].length + x.length) * 2); // Aproximação em bytes
+        }
+    }
+    return total;
+}
+
+// Função para limpar cache se necessário
+function limparCacheSeNecessario() {
+    const tamanho = estimarTamanhoLocalStorage();
+    const limiteBytes = 4 * 1024 * 1024; // 4MB como limite seguro
+    if (tamanho > limiteBytes) {
+        console.warn('[financeiro.js] localStorage quase cheio, limpando cache...');
+        localStorage.removeItem('cacheBusca');
+    }
+}
+
 function salvarGasto() {
     const tipoInput = document.getElementById('tipoGasto');
     const valorInput = document.getElementById('valorGasto');
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.className = 'form-text';
     if (!tipoInput || !valorInput) {
         console.error('[financeiro.js] Elementos do DOM ausentes: tipoGasto ou valorGasto');
-        alert('Erro interno: Elementos da página ausentes.');
+        feedbackDiv.textContent = 'Erro interno: Elementos da página ausentes.';
+        feedbackDiv.className += ' text-danger';
+        tipoInput?.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 5000);
         return;
     }
 
     const tipo = tipoInput.value.trim();
     const valor = parseFloat(valorInput.value);
     if (!tipo || isNaN(valor) || valor <= 0) {
-        alert('Preencha tipo e valor positivo!');
+        feedbackDiv.textContent = 'Preencha tipo e valor positivo!';
+        feedbackDiv.className += ' text-danger';
+        tipoInput.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 5000);
         return;
     }
 
-    let gastos = [];
-    try {
-        gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
-        if (!Array.isArray(gastos)) throw new Error('Dados de gastos inválidos.');
-    } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar gastos:', e);
-        gastos = [];
+    let gastos = safeLocalStorageGet('gastos');
+    if (gastos.length >= 500) {
+        gastos.shift();
     }
 
     const novoGasto = {
@@ -68,15 +123,30 @@ function salvarGasto() {
     gastos.push(novoGasto);
 
     try {
-        localStorage.setItem('gastos', JSON.stringify(gastos));
+        safeLocalStorageSet('gastos', gastos);
         console.log('[financeiro.js] Gasto salvo:', novoGasto);
         carregarGastos();
         tipoInput.value = '';
         valorInput.value = '';
         tipoInput.focus();
+        feedbackDiv.textContent = 'Gasto salvo com sucesso!';
+        feedbackDiv.className += ' text-success';
+        tipoInput.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 3000);
     } catch (e) {
+        let errorMessage = 'Erro ao salvar gasto. ';
+        if (e.name === 'QuotaExceededError') {
+            errorMessage += 'O armazenamento do navegador está cheio. Limpe os dados do site ou aumente a cota de armazenamento.';
+        } else if (e.name === 'SecurityError') {
+            errorMessage += 'Acesso ao armazenamento foi bloqueado. Verifique se o site está em um ambiente seguro (HTTPS) e se não está em modo anônimo.';
+        } else {
+            errorMessage += 'Detalhes: ' + e.message;
+        }
         console.error('[financeiro.js] Erro ao salvar gastos:', e);
-        alert('Erro ao salvar gasto. Verifique o armazenamento do navegador.');
+        feedbackDiv.textContent = errorMessage;
+        feedbackDiv.className += ' text-danger';
+        tipoInput.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 7000);
     }
 }
 
@@ -88,16 +158,7 @@ function carregarGastos(semanaSelecionada = '') {
         return 0;
     }
 
-    let gastos = [];
-    try {
-        gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
-        if (!Array.isArray(gastos)) throw new Error('Dados de gastos inválidos.');
-    } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar gastos:', e);
-        localStorage.setItem('gastos', '[]');
-        gastos = [];
-    }
-
+    let gastos = safeLocalStorageGet('gastos');
     let gastosFiltrados = gastos;
     if (semanaSelecionada) {
         const inicioSemana = new Date(semanaSelecionada);
@@ -149,9 +210,14 @@ function salvarGanho() {
     const plataformaInput = document.getElementById('plataformaGanho');
     const kmRodadoInput = document.getElementById('kmRodadoGanho');
     const valorInput = document.getElementById('valorGanho');
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.className = 'form-text';
     if (!plataformaInput || !kmRodadoInput || !valorInput) {
         console.error('[financeiro.js] Elementos do DOM ausentes: plataformaGanho, kmRodadoGanho ou valorGanho');
-        alert('Erro interno: Elementos da página ausentes.');
+        feedbackDiv.textContent = 'Erro interno: Elementos da página ausentes.';
+        feedbackDiv.className += ' text-danger';
+        plataformaInput?.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 5000);
         return;
     }
 
@@ -159,17 +225,16 @@ function salvarGanho() {
     const kmRodado = parseFloat(kmRodadoInput.value);
     const valor = parseFloat(valorInput.value);
     if (!plataforma || isNaN(kmRodado) || kmRodado < 0 || isNaN(valor) || valor <= 0) {
-        alert('Preencha plataforma, quilometragem válida e valor positivo!');
+        feedbackDiv.textContent = 'Preencha plataforma, quilometragem válida e valor positivo!';
+        feedbackDiv.className += ' text-danger';
+        plataformaInput.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 5000);
         return;
     }
 
-    let ganhos = [];
-    try {
-        ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
-        if (!Array.isArray(ganhos)) throw new Error('Dados de ganhos inválidos.');
-    } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar ganhos:', e);
-        ganhos = [];
+    let ganhos = safeLocalStorageGet('ganhos');
+    if (ganhos.length >= 500) {
+        ganhos.shift();
     }
 
     const novoGanho = {
@@ -182,7 +247,7 @@ function salvarGanho() {
     ganhos.push(novoGanho);
 
     try {
-        localStorage.setItem('ganhos', JSON.stringify(ganhos));
+        safeLocalStorageSet('ganhos', ganhos);
         console.log('[financeiro.js] Ganho salvo:', novoGanho);
         carregarSemanas();
         carregarGanhos();
@@ -190,9 +255,24 @@ function salvarGanho() {
         kmRodadoInput.value = '';
         valorInput.value = '';
         plataformaInput.focus();
+        feedbackDiv.textContent = 'Ganho salvo com sucesso!';
+        feedbackDiv.className += ' text-success';
+        plataformaInput.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 3000);
     } catch (e) {
+        let errorMessage = 'Erro ao salvar ganho. ';
+        if (e.name === 'QuotaExceededError') {
+            errorMessage += 'O armazenamento do navegador está cheio. Limpe os dados do site ou aumente a cota de armazenamento.';
+        } else if (e.name === 'SecurityError') {
+            errorMessage += 'Acesso ao armazenamento foi bloqueado. Verifique se o site está em um ambiente seguro (HTTPS) e se não está em modo anônimo.';
+        } else {
+            errorMessage += 'Detalhes: ' + e.message;
+        }
         console.error('[financeiro.js] Erro ao salvar ganhos:', e);
-        alert('Erro ao salvar ganho. Verifique o armazenamento do navegador.');
+        feedbackDiv.textContent = errorMessage;
+        feedbackDiv.className += ' text-danger';
+        plataformaInput.parentElement.appendChild(feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 7000);
     }
 }
 
@@ -203,16 +283,7 @@ function carregarSemanas() {
         return;
     }
 
-    let ganhos = [];
-    try {
-        ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
-        if (!Array.isArray(ganhos)) throw new Error('Dados de ganhos inválidos.');
-    } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar ganhos:', e);
-        localStorage.setItem('ganhos', '[]');
-        ganhos = [];
-    }
-
+    let ganhos = safeLocalStorageGet('ganhos');
     const datas = ganhos.map(g => new Date(g.data)).sort((a, b) => a - b);
     const semanas = new Set();
 
@@ -257,16 +328,7 @@ function carregarGanhos(semanaSelecionada = '') {
         return;
     }
 
-    let ganhos = [];
-    try {
-        ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
-        if (!Array.isArray(ganhos)) throw new Error('Dados de ganhos inválidos.');
-    } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar ganhos:', e);
-        localStorage.setItem('ganhos', '[]');
-        ganhos = [];
-    }
-
+    let ganhos = safeLocalStorageGet('ganhos');
     listaGanhosUl.innerHTML = '';
     let totalGanhos = 0;
     let totalKmRodado = 0;
@@ -330,33 +392,31 @@ function carregarGanhos(semanaSelecionada = '') {
 
 window.excluirGasto = function(idGasto) {
     if (!confirm('Tem certeza que deseja excluir este gasto?')) return;
-    let gastos = [];
+    let gastos = safeLocalStorageGet('gastos');
+    gastos = gastos.filter(gasto => gasto.id !== idGasto);
     try {
-        gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
-        gastos = gastos.filter(gasto => gasto.id !== idGasto);
-        localStorage.setItem('gastos', JSON.stringify(gastos));
+        safeLocalStorageSet('gastos', gastos);
         console.log('[financeiro.js] Gasto excluído:', idGasto);
         carregarGastos();
         carregarGanhos(document.getElementById('semanaConsulta')?.value || '');
     } catch (e) {
         console.error('[financeiro.js] Erro ao excluir gasto:', e);
-        alert('Erro ao excluir gasto. Verifique o armazenamento do navegador.');
+        alert('Erro ao excluir gasto: ' + e.message);
     }
 };
 
 window.excluirGanho = function(idGanho) {
     if (!confirm('Tem certeza que deseja excluir este ganho?')) return;
-    let ganhos = [];
+    let ganhos = safeLocalStorageGet('ganhos');
+    ganhos = ganhos.filter(ganho => ganho.id !== idGanho);
     try {
-        ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
-        ganhos = ganhos.filter(ganho => ganho.id !== idGanho);
-        localStorage.setItem('ganhos', JSON.stringify(ganhos));
+        safeLocalStorageSet('ganhos', ganhos);
         console.log('[financeiro.js] Ganho excluído:', idGanho);
         carregarSemanas();
         carregarGanhos(document.getElementById('semanaConsulta')?.value || '');
     } catch (e) {
         console.error('[financeiro.js] Erro ao excluir ganho:', e);
-        alert('Erro ao excluir ganho. Verifique o armazenamento do navegador.');
+        alert('Erro ao excluir ganho: ' + e.message);
     }
 };
 
@@ -371,7 +431,6 @@ function salvarKmPorLitro() {
 
     console.log('[financeiro.js] Iniciando salvamento de Km/Litro...');
 
-    // Validação robusta do valor inserido
     const inputValue = kmPorLitroInput.value.trim();
     if (inputValue === '') {
         alert('Por favor, insira um valor para Km/Litro!');
@@ -401,9 +460,9 @@ function salvarKmPorLitro() {
     const formattedValue = kmPorLitro.toFixed(2);
 
     try {
-        localStorage.setItem('kmPorLitro', formattedValue);
+        safeLocalStorageSet('kmPorLitro', formattedValue);
         console.log('[financeiro.js] Km/Litro salvo no localStorage:', formattedValue);
-        carregarKmPorLitro(); // Forçar recarregamento para garantir sincronização
+        carregarKmPorLitro();
         feedbackDiv.textContent = 'Km/Litro salvo com sucesso!';
         feedbackDiv.className = 'form-text text-success';
         feedbackDiv.style.display = 'block';
@@ -413,13 +472,13 @@ function salvarKmPorLitro() {
             feedbackDiv.textContent = '';
             kmPorLitroInput.classList.remove('saved');
         }, 3000);
-        kmPorLitroInput.value = formattedValue; // Garante que o input reflita o valor salvo
+        kmPorLitroInput.value = formattedValue;
     } catch (e) {
         let errorMessage = 'Erro ao salvar Km/Litro. ';
         if (e.name === 'QuotaExceededError') {
             errorMessage += 'O armazenamento do navegador está cheio. Limpe os dados do site ou aumente a cota de armazenamento.';
         } else if (e.name === 'SecurityError') {
-            errorMessage += 'Acesso ao armazenamento foi bloqueado. Verifique se o site está sendo executado em um ambiente seguro (HTTPS) e se o modo de navegação anônima não está ativo.';
+            errorMessage += 'Acesso ao armazenamento foi bloqueado. Verifique se o site está em um ambiente seguro (HTTPS) e se não está em modo anônimo.';
         } else {
             errorMessage += 'Detalhes: ' + e.message;
         }
@@ -430,7 +489,7 @@ function salvarKmPorLitro() {
         setTimeout(() => {
             feedbackDiv.style.display = 'none';
             feedbackDiv.textContent = '';
-        }, 7000); // Tempo maior para mensagens de erro
+        }, 7000);
     }
 }
 
@@ -473,7 +532,6 @@ function salvarPrecoPorLitro() {
 
     console.log('[financeiro.js] Iniciando salvamento de Preço/Litro...');
 
-    // Validação robusta do valor inserido
     const inputValue = precoPorLitroInput.value.trim();
     if (inputValue === '') {
         alert('Por favor, insira um valor para Preço/Litro!');
@@ -503,9 +561,9 @@ function salvarPrecoPorLitro() {
     const formattedValue = precoPorLitro.toFixed(2);
 
     try {
-        localStorage.setItem('precoPorLitro', formattedValue);
+        safeLocalStorageSet('precoPorLitro', formattedValue);
         console.log('[financeiro.js] Preço/Litro salvo no localStorage:', formattedValue);
-        carregarPrecoPorLitro(); // Forçar recarregamento para garantir sincronização
+        carregarPrecoPorLitro();
         feedbackDiv.textContent = 'Preço/Litro salvo com sucesso!';
         feedbackDiv.className = 'form-text text-success';
         feedbackDiv.style.display = 'block';
@@ -515,13 +573,13 @@ function salvarPrecoPorLitro() {
             feedbackDiv.textContent = '';
             precoPorLitroInput.classList.remove('saved');
         }, 3000);
-        precoPorLitroInput.value = formattedValue; // Garante que o input reflita o valor salvo
+        precoPorLitroInput.value = formattedValue;
     } catch (e) {
         let errorMessage = 'Erro ao salvar Preço/Litro. ';
         if (e.name === 'QuotaExceededError') {
             errorMessage += 'O armazenamento do navegador está cheio. Limpe os dados do site ou aumente a cota de armazenamento.';
         } else if (e.name === 'SecurityError') {
-            errorMessage += 'Acesso ao armazenamento foi bloqueado. Verifique se o site está sendo executado em um ambiente seguro (HTTPS) e se o modo de navegação anônima não está ativo.';
+            errorMessage += 'Acesso ao armazenamento foi bloqueado. Verifique se o site está em um ambiente seguro (HTTPS) e se não está em modo anônimo.';
         } else {
             errorMessage += 'Detalhes: ' + e.message;
         }
@@ -532,7 +590,7 @@ function salvarPrecoPorLitro() {
         setTimeout(() => {
             feedbackDiv.style.display = 'none';
             feedbackDiv.textContent = '';
-        }, 7000); // Tempo maior para mensagens de erro
+        }, 7000);
     }
 }
 
