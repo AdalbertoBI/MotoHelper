@@ -1,6 +1,7 @@
 const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58';
 let paradasCount = 1;
 let localizacaoAtual = null;
+let cidadeAtual = '';
 let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca')) || {};
 let rotaCoordenadas = [];
 let timeoutBusca = null;
@@ -108,7 +109,6 @@ function configurarListeners() {
 
 function limparCampos() {
     document.getElementById('origem').value = '';
-    document.getElementById('contexto').value = '';
     document.getElementById('destino').value = '';
     document.getElementById('paradas').innerHTML = '';
     paradasCount = 1;
@@ -143,11 +143,17 @@ function obterLocalizacaoAtual() {
             try {
                 const enderecoFormatado = await obterEnderecoReverso(localizacaoAtual.lat, localizacaoAtual.lon);
                 const origemInput = document.getElementById('origem');
+                if (enderecoFormatado) {
+                    const enderecoData = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}&addressdetails=1&accept-language=pt-BR`).then(res => res.json());
+                    cidadeAtual = enderecoData.address.city || enderecoData.address.town || enderecoData.address.village || '';
+                    console.log('[script.js] Cidade atual definida:', cidadeAtual);
+                }
                 if (origemInput && !origemInput.value) {
                     if (enderecoFormatado && !enderecoFormatado.includes("Parque Industrial")) {
                         console.warn('[script.js] Endereço retornado não corresponde ao Parque Industrial:', enderecoFormatado);
                         origemInput.value = ENDERECO_FIXO.endereco;
                         localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
+                        cidadeAtual = 'São José dos Campos';
                     } else {
                         origemInput.value = enderecoFormatado || 'Localização Atual';
                     }
@@ -158,6 +164,7 @@ function obterLocalizacaoAtual() {
                 if (origemInput && !origemInput.value) {
                     origemInput.value = ENDERECO_FIXO.endereco;
                     localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
+                    cidadeAtual = 'São José dos Campos';
                 }
             }
         },
@@ -173,7 +180,8 @@ function obterLocalizacaoAtual() {
 
 function usarLocalizacaoPadrao() {
     localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
-    console.log('[script.js] Usando localização padrão:', localizacaoAtual);
+    cidadeAtual = 'São José dos Campos';
+    console.log('[script.js] Usando localização padrão:', localizacaoAtual, 'Cidade:', cidadeAtual);
     if (mapaPronto) {
         centralizarMapa(localizacaoAtual.lat, localizacaoAtual.lon);
     } else {
@@ -272,12 +280,10 @@ function configurarEventosBusca() {
 async function buscarSugestoes(inputId, datalistId) {
     const inputElement = document.getElementById(inputId);
     const datalistElement = document.getElementById(datalistId);
-    const contextoInput = document.getElementById('contexto');
     const buscandoDiv = document.getElementById('buscandoSugestoes');
     if (!inputElement || !datalistElement) return;
 
     const entrada = inputElement.value.trim();
-    const contexto = contextoInput ? contextoInput.value.trim() : '';
     if (entrada.length < 3 && !isCoordenada(entrada)) {
         datalistElement.innerHTML = '';
         return;
@@ -289,7 +295,7 @@ async function buscarSugestoes(inputId, datalistId) {
         return;
     }
 
-    const cacheKey = `sug_${entrada.toLowerCase()}_${contexto.toLowerCase()}`;
+    const cacheKey = `sug_${entrada.toLowerCase()}_${cidadeAtual.toLowerCase()}`;
     if (cacheBusca[cacheKey]) {
         preencherDatalist(datalistId, cacheBusca[cacheKey]);
         return;
@@ -298,7 +304,7 @@ async function buscarSugestoes(inputId, datalistId) {
     if (buscandoDiv) buscandoDiv.style.display = 'inline';
     try {
         let query = encodeURIComponent(entrada);
-        if (contexto) query += `,${encodeURIComponent(contexto)}`;
+        if (cidadeAtual) query += `,${encodeURIComponent(cidadeAtual)}`;
         const viewboxParam = localizacaoAtual
             ? `&viewbox=${localizacaoAtual.lon - 0.5},${localizacaoAtual.lat + 0.5},${localizacaoAtual.lon + 0.5},${localizacaoAtual.lat - 0.5}&bounded=1`
             : '';
@@ -349,8 +355,7 @@ async function geocodificar(endereco) {
     }
 
     let enderecoLimpo = endereco.trim().replace(/\s*\([^)]*\)$/, '').replace(/,\s*\d{5}-\d{3},\s*Brasil$/, '');
-    const contexto = document.getElementById('contexto')?.value.trim();
-    if (contexto) enderecoLimpo += `, ${contexto}`;
+    if (cidadeAtual) enderecoLimpo += `, ${cidadeAtual}`;
     if (!enderecoLimpo) {
         console.warn('[script.js] Endereço vazio ou inválido após limpeza.');
         return null;
