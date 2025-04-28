@@ -3,31 +3,29 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         localStorage.setItem('test', 'test');
         localStorage.removeItem('test');
+        console.log('[financeiro.js] localStorage disponível.');
     } catch (e) {
         console.error('[financeiro.js] localStorage não disponível:', e);
         alert('Erro: Armazenamento local não disponível. Verifique as configurações do navegador ou permissões de armazenamento.');
         return;
     }
 
-    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
-    if (btnSalvarGasto) btnSalvarGasto.addEventListener('click', salvarGasto);
-    else console.warn('[financeiro.js] Botão #btnSalvarGasto não encontrado.');
+    // Função para registrar eventos com verificação robusta
+    function registerEvent(elementId, event, handler, errorMessage) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.addEventListener(event, handler);
+            console.log(`[financeiro.js] Evento '${event}' registrado para #${elementId}.`);
+        } else {
+            console.warn(`[financeiro.js] ${errorMessage}`);
+        }
+    }
 
-    const btnSalvarGanho = document.getElementById('btnSalvarGanho');
-    if (btnSalvarGanho) btnSalvarGanho.addEventListener('click', salvarGanho);
-    else console.warn('[financeiro.js] Botão #btnSalvarGanho não encontrado.');
-
-    const btnSalvarKm = document.getElementById('btnSalvarKmPorLitro');
-    if (btnSalvarKm) btnSalvarKm.addEventListener('click', salvarKmPorLitro);
-    else console.warn('[financeiro.js] Botão #btnSalvarKmPorLitro não encontrado.');
-
-    const btnSalvarPreco = document.getElementById('btnSalvarPrecoPorLitro');
-    if (btnSalvarPreco) btnSalvarPreco.addEventListener('click', salvarPrecoPorLitro);
-    else console.warn('[financeiro.js] Botão #btnSalvarPrecoPorLitro não encontrado.');
-
-    const semanaConsulta = document.getElementById('semanaConsulta');
-    if (semanaConsulta) semanaConsulta.addEventListener('change', () => carregarGanhos(semanaConsulta.value));
-    else console.warn('[financeiro.js] Elemento #semanaConsulta não encontrado.');
+    registerEvent('btnSalvarGasto', 'click', salvarGasto, 'Botão #btnSalvarGasto não encontrado.');
+    registerEvent('btnSalvarGanho', 'click', salvarGanho, 'Botão #btnSalvarGanho não encontrado.');
+    registerEvent('btnSalvarKmPorLitro', 'click', salvarKmPorLitro, 'Botão #btnSalvarKmPorLitro não encontrado.');
+    registerEvent('btnSalvarPrecoPorLitro', 'click', salvarPrecoPorLitro, 'Botão #btnSalvarPrecoPorLitro não encontrado.');
+    registerEvent('semanaConsulta', 'change', () => carregarGanhos(document.getElementById('semanaConsulta')?.value), 'Elemento #semanaConsulta não encontrado.');
 
     carregarGastos();
     carregarKmPorLitro();
@@ -40,7 +38,7 @@ function salvarGasto() {
     const tipoInput = document.getElementById('tipoGasto');
     const valorInput = document.getElementById('valorGasto');
     if (!tipoInput || !valorInput) {
-        console.error('[financeiro.js] Elementos do DOM ausentes.');
+        console.error('[financeiro.js] Elementos do DOM ausentes: tipoGasto ou valorGasto');
         alert('Erro interno: Elementos da página ausentes.');
         return;
     }
@@ -71,6 +69,7 @@ function salvarGasto() {
 
     try {
         localStorage.setItem('gastos', JSON.stringify(gastos));
+        console.log('[financeiro.js] Gasto salvo:', novoGasto);
         carregarGastos();
         tipoInput.value = '';
         valorInput.value = '';
@@ -85,7 +84,7 @@ function carregarGastos(semanaSelecionada = '') {
     const listaGastosUl = document.getElementById('listaGastos');
     const totalGastosSpan = document.getElementById('totalGastos');
     if (!listaGastosUl || !totalGastosSpan) {
-        console.error('[financeiro.js] Elementos do DOM ausentes.');
+        console.error('[financeiro.js] Elementos do DOM ausentes: listaGastos ou totalGastos');
         return 0;
     }
 
@@ -142,6 +141,7 @@ function carregarGastos(semanaSelecionada = '') {
         });
     }
     totalGastosSpan.textContent = total.toFixed(2);
+    console.log('[financeiro.js] Gastos carregados. Total:', total.toFixed(2));
     return total;
 }
 
@@ -150,7 +150,7 @@ function salvarGanho() {
     const kmRodadoInput = document.getElementById('kmRodadoGanho');
     const valorInput = document.getElementById('valorGanho');
     if (!plataformaInput || !kmRodadoInput || !valorInput) {
-        console.error('[financeiro.js] Elementos do DOM ausentes.');
+        console.error('[financeiro.js] Elementos do DOM ausentes: plataformaGanho, kmRodadoGanho ou valorGanho');
         alert('Erro interno: Elementos da página ausentes.');
         return;
     }
@@ -183,6 +183,7 @@ function salvarGanho() {
 
     try {
         localStorage.setItem('ganhos', JSON.stringify(ganhos));
+        console.log('[financeiro.js] Ganho salvo:', novoGanho);
         carregarSemanas();
         carregarGanhos();
         plataformaInput.value = '';
@@ -231,6 +232,7 @@ function carregarSemanas() {
         option.textContent = label;
         semanaConsulta.appendChild(option);
     });
+    console.log('[financeiro.js] Semanas carregadas:', semanas.size);
 }
 
 function getInicioSemana(data) {
@@ -251,7 +253,7 @@ function carregarGanhos(semanaSelecionada = '') {
     const listaGanhosUl = document.getElementById('listaGanhos');
     const totalGanhosSpan = document.getElementById('totalGanhos');
     if (!listaGanhosUl || !totalGanhosSpan) {
-        console.error('[financeiro.js] Elementos do DOM ausentes.');
+        console.error('[financeiro.js] Elementos do DOM ausentes: listaGanhos ou totalGanhos');
         return;
     }
 
@@ -323,6 +325,7 @@ function carregarGanhos(semanaSelecionada = '') {
         <p>Lucro da Semana: <strong>R$ ${lucro.toFixed(2)}</strong></p>
     `;
     listaGanhosUl.insertAdjacentElement('afterend', resumoDiv);
+    console.log('[financeiro.js] Ganhos carregados. Total:', totalGanhos.toFixed(2), 'Km:', totalKmRodado.toFixed(1), 'Lucro:', lucro.toFixed(2));
 }
 
 window.excluirGasto = function(idGasto) {
@@ -332,6 +335,7 @@ window.excluirGasto = function(idGasto) {
         gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
         gastos = gastos.filter(gasto => gasto.id !== idGasto);
         localStorage.setItem('gastos', JSON.stringify(gastos));
+        console.log('[financeiro.js] Gasto excluído:', idGasto);
         carregarGastos();
         carregarGanhos(document.getElementById('semanaConsulta')?.value || '');
     } catch (e) {
@@ -347,6 +351,7 @@ window.excluirGanho = function(idGanho) {
         ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
         ganhos = ganhos.filter(ganho => ganho.id !== idGanho);
         localStorage.setItem('ganhos', JSON.stringify(ganhos));
+        console.log('[financeiro.js] Ganho excluído:', idGanho);
         carregarSemanas();
         carregarGanhos(document.getElementById('semanaConsulta')?.value || '');
     } catch (e) {
@@ -363,6 +368,8 @@ function salvarKmPorLitro() {
         alert('Erro interno: Elementos da página ausentes.');
         return;
     }
+
+    console.log('[financeiro.js] Iniciando salvamento de Km/Litro...');
 
     // Validação robusta do valor inserido
     const inputValue = kmPorLitroInput.value.trim();
@@ -395,6 +402,7 @@ function salvarKmPorLitro() {
 
     try {
         localStorage.setItem('kmPorLitro', formattedValue);
+        console.log('[financeiro.js] Km/Litro salvo no localStorage:', formattedValue);
         carregarKmPorLitro(); // Forçar recarregamento para garantir sincronização
         feedbackDiv.textContent = 'Km/Litro salvo com sucesso!';
         feedbackDiv.className = 'form-text text-success';
@@ -434,6 +442,7 @@ function carregarKmPorLitro() {
     }
     try {
         const kmPorLitro = localStorage.getItem('kmPorLitro');
+        console.log('[financeiro.js] Valor de Km/Litro carregado do localStorage:', kmPorLitro);
         if (kmPorLitro === null || kmPorLitro === '') {
             kmPorLitroInput.value = '';
         } else {
@@ -461,6 +470,8 @@ function salvarPrecoPorLitro() {
         alert('Erro interno: Elementos da página ausentes.');
         return;
     }
+
+    console.log('[financeiro.js] Iniciando salvamento de Preço/Litro...');
 
     // Validação robusta do valor inserido
     const inputValue = precoPorLitroInput.value.trim();
@@ -493,6 +504,7 @@ function salvarPrecoPorLitro() {
 
     try {
         localStorage.setItem('precoPorLitro', formattedValue);
+        console.log('[financeiro.js] Preço/Litro salvo no localStorage:', formattedValue);
         carregarPrecoPorLitro(); // Forçar recarregamento para garantir sincronização
         feedbackDiv.textContent = 'Preço/Litro salvo com sucesso!';
         feedbackDiv.className = 'form-text text-success';
@@ -532,6 +544,7 @@ function carregarPrecoPorLitro() {
     }
     try {
         const precoPorLitro = localStorage.getItem('precoPorLitro');
+        console.log('[financeiro.js] Valor de Preço/Litro carregado do localStorage:', precoPorLitro);
         if (precoPorLitro === null || precoPorLitro === '') {
             precoPorLitroInput.value = '';
         } else {
