@@ -171,14 +171,6 @@
                 </div>
             </div>
 
-            <div class="backup-section mt-3">
-                <h4>Backup de Dados</h4>
-                <button type="button" id="btnExportarDados" class="btn btn-primary mr-2">Exportar Dados</button>
-                <button type="button" id="btnImportarDados" class="btn btn-secondary">Importar Dados</button>
-                <input type="file" id="inputImportarDados" accept=".json" style="display: none;">
-                <div id="backupFeedback" class="form-text text-success mt-2" style="display: none;"></div>
-            </div>
-
             <div class="gastos-section mt-3">
                 <h3>Adicionar Novo Gasto</h3>
                 <div class="form-group">
@@ -187,37 +179,40 @@
                 </div>
                 <div class="form-group">
                     <label for="valorGasto">Valor (R$):</label>
-                    <input type="number" id="valorGasto" class="form-control" placeholder="Digite o valor" min="0" step="0.01">
+                    <input type="number" id="valorGasto" class="form-control" placeholder="Ex: 50.00" min="0" step="0.01">
                 </div>
                 <button type="button" id="btnSalvarGasto" class="btn btn-primary">Adicionar Gasto</button>
+                <h4 class="mt-3">Gastos Registrados</h4>
+                <ul id="listaGastos" class="list-group"></ul>
+                <p class="mt-2">Total de Gastos: R$ <span id="totalGastos">0.00</span></p>
+            </div>
 
-                <h3 class="mt-4">Adicionar Novo Ganho</h3>
+            <div class="ganhos-section mt-3">
+                <h3>Adicionar Novo Ganho</h3>
                 <div class="form-group">
                     <label for="plataformaGanho">Plataforma:</label>
-                    <input type="text" id="plataformaGanho" class="form-control" placeholder="Ex: iFood, Uber Eats">
+                    <input type="text" id="plataformaGanho" class="form-control" placeholder="Ex: iFood, Uber, Rappi">
                 </div>
                 <div class="form-group">
-                    <label for="kmRodadoGanho">Quilometragem (km):</label>
-                    <input type="number" id="kmRodadoGanho" class="form-control" placeholder="Digite a quilometragem" min="0" step="0.1">
+                    <label for="kmRodadoGanho">Km Rodado:</label>
+                    <input type="number" id="kmRodadoGanho" class="form-control" placeholder="Ex: 10.5" min="0" step="0.1">
                 </div>
                 <div class="form-group">
                     <label for="valorGanho">Valor (R$):</label>
-                    <input type="number" id="valorGanho" class="form-control" placeholder="Digite o valor" min="0" step="0.01">
+                    <input type="number" id="valorGanho" class="form-control" placeholder="Ex: 25.00" min="0" step="0.01">
                 </div>
-                <button type="button" id="btnSalvarGanho" class="btn btn-success">Adicionar Ganho</button>
-
-                <h3 class="mt-4">Histórico de Gastos</h3>
-                <p><strong>Total Gasto: R$ <span id="totalGastos">0.00</span></strong></p>
-                <ul id="listaGastos" class="list-group list-group-flush"></ul>
-
-                <h3 class="mt-4">Histórico de Ganhos</h3>
+                <button type="button" id="btnSalvarGanho" class="btn btn-primary">Adicionar Ganho</button>
+                <h4 class="mt-3">Ganhos Registrados</h4>
                 <div class="form-group">
-                    <label for="semanaConsulta">Consultar Semana:</label>
-                    <select id="semanaConsulta" class="form-control"></select>
+                    <label for="semanaConsulta">Filtrar por Semana:</label>
+                    <select id="semanaConsulta" class="form-control">
+                        <option value="">Semana Atual</option>
+                    </select>
                 </div>
-                <p><strong>Total Ganho: R$ <span id="totalGanhos">0.00</span></strong></p>
-                <ul id="listaGanhos" class="list-group list-group-flush"></ul>
+                <ul id="listaGanhos" class="list-group"></ul>
+                <p class="mt-2">Total de Ganhos: R$ <span id="totalGanhos">0.00</span></p>
             </div>
+
             <div class="mt-3 text-muted text-center">
                 Junte-se à nossa comunidade no WhatsApp! 
                 <a href="https://chat.whatsapp.com/IbsOuFuyRweCEzLMooCyVD" target="_blank" class="text-primary" aria-label="Entrar na comunidade do WhatsApp">Clique aqui</a>
@@ -229,36 +224,18 @@
 
         <!-- Aba SOS -->
         <div id="SOS" class="tabcontent">
-            <h2>Emergência SOS</h2>
-            <p class="text-danger"><strong>Atenção:</strong> Este botão tentará obter sua localização e exibir um alerta simulado. Em uma aplicação real, ele enviaria sua localização para contatos de emergência.</p>
-            <div class="config-section mb-3 p-3 border rounded">
-                <h4>Contatos de Emergência</h4>
-                <div class="form-group">
-                    <label for="contato1Nome">Nome do Contato 1:</label>
-                    <input type="text" id="contato1Nome" class="form-control" placeholder="Nome do contato (opcional)">
-                </div>
-                <div class="form-group">
-                    <label for="contato1Telefone">Telefone do Contato 1:</label>
-                    <input type="tel" id="contato1Telefone" class="form-control" placeholder="Ex: +5511999999999 (opcional)">
-                </div>
-                <div class="form-group">
-                    <label for="contato2Nome">Nome do Contato 2:</label>
-                    <input type="text" id="contato2Nome" class="form-control" placeholder="Nome do contato (opcional)">
-                </div>
-                <div class="form-group">
-                    <label for="contato2Telefone">Telefone do Contato 2:</label>
-                    <input type="tel" id="contato2Telefone" class="form-control" placeholder="Ex: +5511999999999 (opcional)">
-                </div>
-                <button type="button" id="btnSalvarContatos" class="btn btn-secondary btn-sm mt-1">Salvar Contatos</button>
-                <div id="contatosFeedback" class="form-text text-success" style="display: none;">Contatos salvos com sucesso!</div>
+            <h2>Contatos de Emergência</h2>
+            <p>Adicione contatos para acessar rapidamente em emergências.</p>
+            <div class="form-group">
+                <label for="nomeContato">Nome:</label>
+                <input type="text" id="nomeContato" class="form-control" placeholder="Digite o nome do contato">
             </div>
-            <button type="button" id="btnSOS" class="btn btn-danger btn-lg">Enviar Alerta SOS</button>
-            <div class="mt-3">
-                <h4>Chamadas de Emergência</h4>
-                <button type="button" id="btnPolicia" class="btn btn-danger mr-2">Polícia (190)</button>
-                <button type="button" id="btnSamu" class="btn btn-danger mr-2">SAMU (192)</button>
-                <button type="button" id="btnBombeiros" class="btn btn-danger">Bombeiros (193)</button>
+            <div class="form-group">
+                <label for="telefoneContato">Telefone:</label>
+                <input type="tel" id="telefoneContato" class="form-control" placeholder="Ex: (12) 12345-6789">
             </div>
+            <button type="button" id="btnSalvarContato" class="btn btn-primary">Adicionar Contato</button>
+            <ul id="listaContatos" class="list-group mt-3"></ul>
             <div class="mt-3 text-muted text-center">
                 Junte-se à nossa comunidade no WhatsApp! 
                 <a href="https://chat.whatsapp.com/IbsOuFuyRweCEzLMooCyVD" target="_blank" class="text-primary" aria-label="Entrar na comunidade do WhatsApp">Clique aqui</a>
@@ -271,35 +248,41 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="mapa.js"></script>
-    <script src="frete.js"></script>
-    <script src="financeiro.js"></script>
-    <script src="pesquisa.js"></script>
-    <script src="sos.js"></script>
     <script src="script.js"></script>
-
+    <script src="frete.js"></script>
+    <script src="pesquisa.js"></script>
+    <script src="financeiro.js"></script>
+    <script src="sos.js"></script>
     <script>
         function openTab(evt, tabName) {
-            document.querySelectorAll('.tabcontent').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tablink').forEach(link => {
-                link.classList.remove('active');
-            });
-            document.getElementById(tabName).classList.add('active');
-            evt.currentTarget.classList.add('active');
-            if ((tabName === 'Pesquisa' || tabName === 'Rotas') && typeof map !== 'undefined' && map) {
-                setTimeout(() => {
-                    map.invalidateSize();
-                    console.log('[index.html] Mapa redimensionado ao abrir aba:', tabName);
-                }, 500);
+            const tabcontent = document.getElementsByClassName('tabcontent');
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = 'none';
+                tabcontent[i].classList.remove('active');
+            }
+            const tablinks = document.getElementsByClassName('tablink');
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove('active');
+            }
+            const currentTab = document.getElementById(tabName);
+            if (currentTab) {
+                currentTab.style.display = 'block';
+                currentTab.classList.add('active');
+                evt.currentTarget.classList.add('active');
+                if (tabName === 'Rotas' && typeof map !== 'undefined' && map) {
+                    setTimeout(() => map.invalidateSize(), 100);
+                }
             }
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (document.querySelector('.tablink.active')) {
-                document.querySelector('.tablink.active').click();
-            }
-        });
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('Service Worker registrado:', reg);
+                }).catch(err => {
+                    console.error('Erro ao registrar Service Worker:', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>

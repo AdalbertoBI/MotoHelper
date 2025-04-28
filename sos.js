@@ -1,86 +1,135 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[sos.js] Configurando listeners para SOS...');
-    const btnPolicia = document.getElementById('btnPolicia');
-    const btnSamu = document.getElementById('btnSamu');
-    const btnBombeiros = document.getElementById('btnBombeiros');
-    const btnSalvarContatos = document.getElementById('btnSalvarContatos');
-
-    if (btnPolicia) btnPolicia.addEventListener('click', () => ligarEmergencia('190'));
-    else console.warn('[sos.js] Botão #btnPolicia não encontrado.');
-
-    if (btnSamu) btnSamu.addEventListener('click', () => ligarEmergencia('192'));
-    else console.warn('[sos.js] Botão #btnSamu não encontrado.');
-
-    if (btnBombeiros) btnBombeiros.addEventListener('click', () => ligarEmergencia('193'));
-    else console.warn('[sos.js] Botão #btnBombeiros não encontrado.');
-
-    if (btnSalvarContatos) btnSalvarContatos.addEventListener('click', salvarContatos);
-    else console.warn('[sos.js] Botão #btnSalvarContatos não encontrado.');
-
-    const btnSOS = document.getElementById('btnSOS');
-    if (btnSOS) btnSOS.addEventListener('click', enviarAlertaSOS);
-    else console.warn('[sos.js] Botão #btnSOS não encontrado.');
-
+    const btnSalvarContato = document.getElementById('btnSalvarContato');
+    if (btnSalvarContato) {
+        btnSalvarContato.addEventListener('click', salvarContato);
+    } else {
+        console.warn('[sos.js] Botão #btnSalvarContato não encontrado.');
+    }
     carregarContatos();
 });
 
-function ligarEmergencia(numero) {
-    const url = `tel:${numero}`;
-    console.log('[sos.js] Iniciando ligação para:', numero);
-    window.location.href = url;
-}
+function salvarContato() {
+    const nomeInput = document.getElementById('nomeContato');
+    const telefoneInput = document.getElementById('telefoneContato');
+    if (!nomeInput || !telefoneInput) {
+        console.error('[sos.js] Elementos do DOM ausentes.');
+        alert('Erro interno: Elementos da página ausentes.');
+        return;
+    }
 
-function salvarContatos() {
-    const contato1Nome = document.getElementById('contato1Nome').value.trim();
-    const contato1Telefone = document.getElementById('contato1Telefone').value.trim();
-    const contato2Nome = document.getElementById('contato2Nome').value.trim();
-    const contato2Telefone = document.getElementById('contato2Telefone').value.trim();
-    const feedbackDiv = document.getElementById('contatosFeedback');
+    const nome = nomeInput.value.trim();
+    const telefone = telefoneInput.value.trim().replace(/\D/g, ''); // Remove caracteres não numéricos
+    const telefoneRegex = /^\d{10,11}$/; // Aceita 10 ou 11 dígitos (DDD + número)
 
-    const contatos = {
-        contato1: { nome: contato1Nome, telefone: contato1Telefone },
-        contato2: { nome: contato2Nome, telefone: contato2Telefone }
+    if (!nome) {
+        alert('Digite o nome do contato!');
+        nomeInput.focus();
+        return;
+    }
+    if (!telefoneRegex.test(telefone)) {
+        alert('Digite um telefone válido (DDD + número, 10 ou 11 dígitos)!');
+        telefoneInput.focus();
+        return;
+    }
+
+    let contatos = [];
+    try {
+        contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
+        if (!Array.isArray(contatos)) throw new Error('Dados de contatos inválidos.');
+    } catch (e) {
+        console.error('[sos.js] Erro ao carregar contatos:', e);
+        contatos = [];
+    }
+
+    const novoContato = {
+        id: Date.now(),
+        nome,
+        telefone,
+        data: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     };
+    contatos.push(novoContato);
 
-    localStorage.setItem('contatos', JSON.stringify(contatos));
-    console.log('[sos.js] Contatos salvos:', contatos);
-
-    if (feedbackDiv) {
-        feedbackDiv.style.display = 'block';
-        setTimeout(() => feedbackDiv.style.display = 'none', 3000);
+    try {
+        localStorage.setItem('contatos', JSON.stringify(contatos));
+        console.log('[sos.js] Contato salvo:', novoContato);
+        carregarContatos();
+        nomeInput.value = '';
+        telefoneInput.value = '';
+        nomeInput.focus();
+        mostrarFeedback('Contato salvo com sucesso!');
+    } catch (e) {
+        console.error('[sos.js] Erro ao salvar contatos:', e);
+        alert('Erro ao salvar contato. Verifique o armazenamento do navegador.');
     }
 }
 
 function carregarContatos() {
-    const contatos = JSON.parse(localStorage.getItem('contatos') || '{}');
-    document.getElementById('contato1Nome').value = contatos.contato1?.nome || '';
-    document.getElementById('contato1Telefone').value = contatos.contato1?.telefone || '';
-    document.getElementById('contato2Nome').value = contatos.contato2?.nome || '';
-    document.getElementById('contato2Telefone').value = contatos.contato2?.telefone || '';
-    console.log('[sos.js] Contatos carregados:', contatos);
-}
-
-function enviarAlertaSOS() {
-    if (!navigator.geolocation) {
-        alert('Geolocalização não suportada ou desativada.');
+    const listaContatosUl = document.getElementById('listaContatos');
+    if (!listaContatosUl) {
+        console.error('[sos.js] Elemento #listaContatos não encontrado.');
         return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const contatos = JSON.parse(localStorage.getItem('contatos') || '{}');
-            let mensagem = `🚨 Alerta SOS - Motoca BR 🚨\nMinha localização: https://www.google.com/maps?q=${lat},${lng}\n`;
-            if (contatos.contato1?.telefone) mensagem += `Contato 1: ${contatos.contato1.nome || 'Sem nome'} (${contatos.contato1.telefone})\n`;
-            if (contatos.contato2?.telefone) mensagem += `Contato 2: ${contatos.contato2.nome || 'Sem nome'} (${contatos.contato2.telefone})\n`;
-            alert(mensagem); // Simulação: em uma aplicação real, enviar via SMS ou WhatsApp
-            console.log('[sos.js] Alerta SOS simulado:', mensagem);
-        },
-        (error) => {
-            console.error('[sos.js] Erro na geolocalização:', error.message);
-            alert(`Não foi possível obter sua localização: ${error.message}.`);
-        },
-        { timeout: 10000, enableHighAccuracy: true }
-    );
+    let contatos = [];
+    try {
+        contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
+        if (!Array.isArray(contatos)) throw new Error('Dados de contatos inválidos.');
+    } catch (e) {
+        console.error('[sos.js] Erro ao carregar contatos:', e);
+        localStorage.setItem('contatos', '[]');
+        contatos = [];
+    }
+
+    listaContatosUl.innerHTML = '';
+    if (contatos.length === 0) {
+        listaContatosUl.innerHTML = '<li class="list-group-item text-muted">Nenhum contato registrado.</li>';
+    } else {
+        contatos.sort((a, b) => b.id - a.id);
+        contatos.forEach(contato => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `
+                <span>${contato.data}: ${contato.nome} - <a href="tel:${contato.telefone}" title="Ligar">${formatarTelefone(contato.telefone)}</a></span>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirContato(${contato.id})" title="Excluir Contato">×</button>
+            `;
+            listaContatosUl.appendChild(li);
+        });
+    }
+    console.log('[sos.js] Contatos carregados:', contatos.length);
 }
+
+function formatarTelefone(telefone) {
+    if (telefone.length === 11) {
+        return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 7)}-${telefone.slice(7)}`;
+    } else if (telefone.length === 10) {
+        return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 6)}-${telefone.slice(6)}`;
+    }
+    return telefone;
+}
+
+function mostrarFeedback(mensagem) {
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.className = 'form-text text-success';
+    feedbackDiv.textContent = mensagem;
+    const btnSalvarContato = document.getElementById('btnSalvarContato');
+    if (btnSalvarContato) {
+        btnSalvarContato.insertAdjacentElement('afterend', feedbackDiv);
+        setTimeout(() => feedbackDiv.remove(), 3000);
+    }
+}
+
+window.excluirContato = function(idContato) {
+    if (!confirm('Tem certeza que deseja excluir este contato?')) return;
+    let contatos = [];
+    try {
+        contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
+        contatos = contatos.filter(contato => contato.id !== idContato);
+        localStorage.setItem('contatos', JSON.stringify(contatos));
+        console.log('[sos.js] Contato excluído:', idContato);
+        carregarContatos();
+    } catch (e) {
+        console.error('[sos.js] Erro ao excluir contato:', e);
+        alert('Erro ao excluir contato. Verifique o armazenamento do navegador.');
+    }
+};

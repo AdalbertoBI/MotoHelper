@@ -1,34 +1,20 @@
-const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58';
-let paradasCount = 1;
-let localizacaoAtual = null;
-let cidadeAtual = '';
-let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca')) || {};
-let rotaCoordenadas = [];
-let timeoutBusca = null;
+const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58'; // Chave válida fornecida
 let mapaPronto = false;
-
-const COORDENADAS_PADRAO = {
-    lat: -23.2237,
-    lon: -45.9009
-};
-
-const ENDERECO_FIXO = {
-    endereco: "Rua Caruaru, 55, Parque Industrial, São José dos Campos, São Paulo",
-    lat: -23.2582,
-    lon: -45.8875
-};
-
+let localizacaoAtual = null;
+let cidadeAtual = 'São José dos Campos';
+let paradasCount = 1;
+let timeoutBusca = null;
+let cacheBusca = {};
+let rotaCoordenadas = [];
+const COORDENADAS_PADRAO = { endereco: 'Parque Industrial, São José dos Campos, São Paulo', lat: -23.2582, lon: -45.8875 };
 const MAX_CACHE_ENTRIES = 1000;
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[script.js] DOM carregado. Iniciando aplicação...');
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        document.getElementById('themeToggle').textContent = '🌙';
-    } else {
-        document.body.classList.add('light-mode');
-    }
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.body.classList.add(savedTheme + '-mode');
+    document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+    
     await esperarLeaflet();
     inicializarMapa();
     if (typeof map !== 'undefined' && map) {
@@ -89,9 +75,7 @@ function configurarListeners() {
 
     const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
-        console.log('[script.js] Botão #themeToggle encontrado, adicionando listener.');
         themeToggle.addEventListener('click', () => {
-            console.log('[script.js] Botão de tema clicado.');
             const isDarkMode = !document.body.classList.contains('dark-mode');
             document.body.classList.remove('dark-mode', 'light-mode');
             document.body.classList.add(isDarkMode ? 'dark-mode' : 'light-mode');
@@ -104,6 +88,7 @@ function configurarListeners() {
         console.warn('[script.js] Botão #themeToggle não encontrado.');
     }
 
+    configurarEventosBusca();
     console.log('[script.js] Listeners da aba Rotas configurados.');
 }
 
@@ -136,7 +121,6 @@ function obterLocalizacaoAtual() {
             if (mapaPronto) {
                 centralizarMapa(localizacaoAtual.lat, localizacaoAtual.lon);
             } else {
-                console.warn('[script.js] Mapa não pronto, inicializando com localização.');
                 inicializarMapa([localizacaoAtual.lat, localizacaoAtual.lon]);
                 if (map) mapaPronto = true;
             }
@@ -145,27 +129,19 @@ function obterLocalizacaoAtual() {
                 const origemInput = document.getElementById('origem');
                 if (enderecoFormatado) {
                     const enderecoData = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.lat}&lon=${localizacaoAtual.lon}&addressdetails=1&accept-language=pt-BR`).then(res => res.json());
-                    cidadeAtual = enderecoData.address.city || enderecoData.address.town || enderecoData.address.village || '';
+                    cidadeAtual = enderecoData.address.city || enderecoData.address.town || enderecoData.address.village || 'São José dos Campos';
                     console.log('[script.js] Cidade atual definida:', cidadeAtual);
-                }
-                if (origemInput && !origemInput.value) {
-                    if (enderecoFormatado && !enderecoFormatado.includes("Parque Industrial")) {
-                        console.warn('[script.js] Endereço retornado não corresponde ao Parque Industrial:', enderecoFormatado);
-                        origemInput.value = ENDERECO_FIXO.endereco;
-                        localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
-                        cidadeAtual = 'São José dos Campos';
-                    } else {
-                        origemInput.value = enderecoFormatado || 'Localização Atual';
+                    if (origemInput && !origemInput.value) {
+                        origemInput.value = enderecoFormatado;
+                    }
+                } else {
+                    if (origemInput && !origemInput.value) {
+                        origemInput.value = 'Localização Atual';
                     }
                 }
             } catch (error) {
                 console.error('[script.js] Erro ao obter endereço reverso:', error);
-                const origemInput = document.getElementById('origem');
-                if (origemInput && !origemInput.value) {
-                    origemInput.value = ENDERECO_FIXO.endereco;
-                    localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
-                    cidadeAtual = 'São José dos Campos';
-                }
+                usarLocalizacaoPadrao();
             }
         },
         (error) => {
@@ -174,12 +150,12 @@ function obterLocalizacaoAtual() {
             alert(`Não foi possível obter sua localização: ${error.message}. Usando localização padrão.`);
             usarLocalizacaoPadrao();
         },
-        { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
+        { timeout: 15000, enableHighAccuracy: true, maximumAge: 60000 }
     );
 }
 
 function usarLocalizacaoPadrao() {
-    localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
+    localizacaoAtual = { lat: COORDENADAS_PADRAO.lat, lon: COORDENADAS_PADRAO.lon };
     cidadeAtual = 'São José dos Campos';
     console.log('[script.js] Usando localização padrão:', localizacaoAtual, 'Cidade:', cidadeAtual);
     if (mapaPronto) {
@@ -190,7 +166,7 @@ function usarLocalizacaoPadrao() {
     }
     const origemInput = document.getElementById('origem');
     if (origemInput && !origemInput.value) {
-        origemInput.value = ENDERECO_FIXO.endereco;
+        origemInput.value = 'São José dos Campos, SP';
     }
 }
 
@@ -263,17 +239,10 @@ function configurarEventosBusca() {
     inputs.forEach(input => {
         const inputId = input.getAttribute('data-id');
         const datalistId = input.getAttribute('list');
-        const novoInput = input.cloneNode(true);
-        input.parentNode.replaceChild(novoInput, input);
-        const inputAtual = document.getElementById(inputId);
-        if (inputAtual && document.getElementById(datalistId)) {
-            inputAtual.addEventListener('input', () => {
-                clearTimeout(timeoutBusca);
-                timeoutBusca = setTimeout(() => buscarSugestoes(inputId, datalistId), 400);
-            });
-        } else {
-            console.warn(`[script.js] Elemento não encontrado: input #${inputId} ou datalist #${datalistId}`);
-        }
+        input.addEventListener('input', () => {
+            clearTimeout(timeoutBusca);
+            timeoutBusca = setTimeout(() => buscarSugestoes(inputId, datalistId), 400);
+        });
     });
 }
 
@@ -323,6 +292,7 @@ async function buscarSugestoes(inputId, datalistId) {
         preencherDatalist(datalistId, sugestoes);
     } catch (error) {
         console.error('[script.js] Erro ao buscar sugestões:', error);
+        datalistElement.innerHTML = `<option value="">Erro ao buscar sugestões</option>`;
     } finally {
         if (buscandoDiv) buscandoDiv.style.display = 'none';
     }
@@ -349,6 +319,10 @@ function isCoordenada(entrada) {
 }
 
 async function geocodificar(endereco) {
+    if (!endereco || typeof endereco !== 'string') {
+        throw new Error('Endereço inválido ou vazio.');
+    }
+    
     if (isCoordenada(endereco)) {
         const [lat, lon] = endereco.split(',').map(v => parseFloat(v));
         return [lat, lon];
@@ -357,8 +331,7 @@ async function geocodificar(endereco) {
     let enderecoLimpo = endereco.trim().replace(/\s*\([^)]*\)$/, '').replace(/,\s*\d{5}-\d{3},\s*Brasil$/, '');
     if (cidadeAtual) enderecoLimpo += `, ${cidadeAtual}`;
     if (!enderecoLimpo) {
-        console.warn('[script.js] Endereço vazio ou inválido após limpeza.');
-        return null;
+        throw new Error('Endereço vazio após limpeza.');
     }
     const cacheKey = `geo_${enderecoLimpo.toLowerCase()}`;
     if (cacheBusca[cacheKey]) {
@@ -498,11 +471,15 @@ async function calcularRota() {
 
         if (!response.ok) {
             let errorMsg = `Erro na API GraphHopper: ${response.status}`;
-            try {
-                const errorData = await response.json();
-                errorMsg += ` - ${errorData.message || JSON.stringify(errorData)}`;
-            } catch (e) {
-                errorMsg += ` - ${response.statusText}`;
+            if (response.status === 401) {
+                errorMsg = 'Chave da API GraphHopper inválida. Obtenha uma nova chave em https://graphhopper.com/dashboard/api-keys.';
+            } else {
+                try {
+                    const errorData = await response.json();
+                    errorMsg += ` - ${errorData.message || JSON.stringify(errorData)}`;
+                } catch (e) {
+                    errorMsg += ` - ${response.statusText}`;
+                }
             }
             throw new Error(errorMsg);
         }
@@ -585,10 +562,6 @@ function formatarTempo(totalSegundos) {
     if (minutos > 0 || horas > 0) resultado += `${minutos}min `;
     if (horas === 0 && minutos < 5) resultado += `${segundos}s`;
     return resultado.trim() || 'Menos de 1 min';
-}
-
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 function iniciarRota() {
