@@ -7,8 +7,14 @@ let timeoutBusca = null;
 let mapaPronto = false;
 
 const COORDENADAS_PADRAO = {
-    lat: -23.1791,
-    lon: -45.8872
+    lat: -23.2237, // Coordenadas aproximadas de São José dos Campos
+    lon: -45.9009
+};
+
+const ENDERECO_FIXO = {
+    endereco: "Rua Caruaru, 55, Parque Industrial, São José dos Campos, São Paulo",
+    lat: -23.2582, // Aproximação para Parque Industrial, São José dos Campos
+    lon: -45.8875
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -96,6 +102,7 @@ function configurarListeners() {
 function obterLocalizacaoAtual() {
     if (!navigator.geolocation) {
         console.warn('[script.js] Geolocalização não suportada.');
+        usarLocalizacaoPadrao();
         return;
     }
     const carregandoDiv = document.getElementById('carregandoLocalizacao');
@@ -118,27 +125,47 @@ function obterLocalizacaoAtual() {
                 const enderecoFormatado = await obterEnderecoReverso(localizacaoAtual.lat, localizacaoAtual.lon);
                 const origemInput = document.getElementById('origem');
                 if (origemInput && !origemInput.value) {
-                    origemInput.value = enderecoFormatado || 'Localização Atual';
+                    // Verificar se o endereço retornado está próximo ao endereço fixo
+                    if (enderecoFormatado && !enderecoFormatado.includes("Parque Industrial")) {
+                        console.warn('[script.js] Endereço retornado não corresponde ao Parque Industrial:', enderecoFormatado);
+                        origemInput.value = ENDERECO_FIXO.endereco;
+                        localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
+                    } else {
+                        origemInput.value = enderecoFormatado || 'Localização Atual';
+                    }
                 }
             } catch (error) {
                 console.error('[script.js] Erro ao obter endereço reverso:', error);
                 const origemInput = document.getElementById('origem');
                 if (origemInput && !origemInput.value) {
-                    origemInput.value = 'Localização Atual (erro endereço)';
+                    origemInput.value = ENDERECO_FIXO.endereco;
+                    localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
                 }
             }
         },
         (error) => {
             console.error('[script.js] Erro na geolocalização:', error.message);
             if (carregandoDiv) carregandoDiv.style.display = 'none';
-            alert(`Não foi possível obter sua localização: ${error.message}. Usando padrão.`);
-            if (!mapaPronto) {
-                inicializarMapa();
-                if (map) mapaPronto = true;
-            }
+            alert(`Não foi possível obter sua localização: ${error.message}. Usando localização padrão.`);
+            usarLocalizacaoPadrao();
         },
         { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
     );
+}
+
+function usarLocalizacaoPadrao() {
+    localizacaoAtual = { lat: ENDERECO_FIXO.lat, lon: ENDERECO_FIXO.lon };
+    console.log('[script.js] Usando localização padrão:', localizacaoAtual);
+    if (mapaPronto) {
+        centralizarMapa(localizacaoAtual.lat, localizacaoAtual.lon);
+    } else {
+        inicializarMapa([localizacaoAtual.lat, localizacaoAtual.lon]);
+        if (map) mapaPronto = true;
+    }
+    const origemInput = document.getElementById('origem');
+    if (origemInput && !origemInput.value) {
+        origemInput.value = ENDERECO_FIXO.endereco;
+    }
 }
 
 async function obterEnderecoReverso(lat, lon) {
@@ -450,7 +477,7 @@ function processarRespostaRota(data, coordsUtilizadas) {
 
         const kmPorLitro = parseFloat(localStorage.getItem('kmPorLitro')) || 0;
         const precoPorLitro = parseFloat(localStorage.getItem('precoPorLitro')) || 0;
-        let infoCombustivelHTML = '<p class="text-muted"><small>Configure Km/Litro e Preço/Litro na aba "Gastos".</small></p>';
+        let infoCombustivelHTML = '<p class="text-muted"><small>Configure Km/Litro e Preço/Litro na aba "Financeiro".</small></p>';
         if (kmPorLitro > 0) {
             const litros = distancia / kmPorLitro;
             infoCombustivelHTML = `<p><strong>Combustível estimado:</strong> ${litros.toFixed(2)} litros</p>`;
