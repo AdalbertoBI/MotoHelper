@@ -16,6 +16,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSalvarPreco) btnSalvarPreco.addEventListener('click', salvarPrecoPorLitro);
     else console.warn('[financeiro.js] Botão #btnSalvarPrecoPorLitro não encontrado.');
 
+    const btnExportarDados = document.getElementById('btnExportarDados');
+    if (btnExportarDados) btnExportarDados.addEventListener('click', exportarDados);
+    else console.warn('[financeiro.js] Botão #btnExportarDados não encontrado.');
+
+    const btnImportarDados = document.getElementById('btnImportarDados');
+    if (btnImportarDados) btnImportarDados.addEventListener('click', () => document.getElementById('inputImportarDados').click());
+    else console.warn('[financeiro.js] Botão #btnImportarDados não encontrado.');
+
+    const inputImportarDados = document.getElementById('inputImportarDados');
+    if (inputImportarDados) inputImportarDados.addEventListener('change', importarDados);
+    else console.warn('[financeiro.js] Input #inputImportarDados não encontrado.');
+
     const semanaConsulta = document.getElementById('semanaConsulta');
     if (semanaConsulta) semanaConsulta.addEventListener('change', () => carregarGanhos(semanaConsulta.value));
     else console.warn('[financeiro.js] Elemento #semanaConsulta não encontrado.');
@@ -66,7 +78,16 @@ function carregarGastos() {
         return;
     }
 
-    const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+    let gastos = [];
+    try {
+        gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+        if (!Array.isArray(gastos)) throw new Error('Dados de gastos inválidos.');
+    } catch (e) {
+        console.error('[financeiro.js] Erro ao carregar gastos:', e);
+        localStorage.setItem('gastos', '[]');
+        gastos = [];
+    }
+
     listaGastosUl.innerHTML = '';
     let total = 0;
 
@@ -75,14 +96,16 @@ function carregarGastos() {
     } else {
         gastos.sort((a, b) => b.id - a.id);
         gastos.forEach(gasto => {
-            total += gasto.valor;
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `
-                <span>${gasto.data}: ${gasto.tipo} - <strong>R$ ${gasto.valor.toFixed(2)}</strong></span>
-                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGasto(${gasto.id})" title="Excluir Gasto">×</button>
-            `;
-            listaGastosUl.appendChild(li);
+            if (gasto.valor && typeof gasto.valor === 'number') {
+                total += gasto.valor;
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `
+                    <span>${gasto.data}: ${gasto.tipo} - <strong>R$ ${gasto.valor.toFixed(2)}</strong></span>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGasto(${gasto.id})" title="Excluir Gasto">×</button>
+                `;
+                listaGastosUl.appendChild(li);
+            }
         });
     }
     totalGastosSpan.textContent = total.toFixed(2);
@@ -132,7 +155,16 @@ function carregarSemanas() {
         return;
     }
 
-    const ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
+    let ganhos = [];
+    try {
+        ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
+        if (!Array.isArray(ganhos)) throw new Error('Dados de ganhos inválidos.');
+    } catch (e) {
+        console.error('[financeiro.js] Erro ao carregar ganhos:', e);
+        localStorage.setItem('ganhos', '[]');
+        ganhos = [];
+    }
+
     const datas = ganhos.map(g => new Date(g.data)).sort((a, b) => a - b);
     const semanas = new Set();
 
@@ -171,7 +203,16 @@ function carregarGanhos(semanaSelecionada = '') {
         return;
     }
 
-    const ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
+    let ganhos = [];
+    try {
+        ganhos = JSON.parse(localStorage.getItem('ganhos') || '[]');
+        if (!Array.isArray(ganhos)) throw new Error('Dados de ganhos inválidos.');
+    } catch (e) {
+        console.error('[financeiro.js] Erro ao carregar ganhos:', e);
+        localStorage.setItem('ganhos', '[]');
+        ganhos = [];
+    }
+
     listaGanhosUl.innerHTML = '';
     let total = 0;
     let ganhosFiltrados = ganhos;
@@ -202,15 +243,17 @@ function carregarGanhos(semanaSelecionada = '') {
     } else {
         ganhosFiltrados.sort((a, b) => new Date(b.data) - new Date(a.data));
         ganhosFiltrados.forEach(ganho => {
-            total += ganho.valor;
-            const dataFormatada = new Date(ganho.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `
-                <span>${dataFormatada}: ${ganho.plataforma} - ${ganho.kmRodado.toFixed(1)} km - <strong>R$ ${ganho.valor.toFixed(2)}</strong></span>
-                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGanho(${ganho.id})" title="Excluir Ganho">×</button>
-            `;
-            listaGanhosUl.appendChild(li);
+            if (ganho.valor && typeof ganho.valor === 'number') {
+                total += ganho.valor;
+                const dataFormatada = new Date(ganho.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `
+                    <span>${dataFormatada}: ${ganho.plataforma} - ${ganho.kmRodado.toFixed(1)} km - <strong>R$ ${ganho.valor.toFixed(2)}</strong></span>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirGanho(${ganho.id})" title="Excluir Ganho">×</button>
+                `;
+                listaGanhosUl.appendChild(li);
+            }
         });
     }
     totalGanhosSpan.textContent = total.toFixed(2);
@@ -298,4 +341,60 @@ function carregarPrecoPorLitro() {
     const precoPorLitro = localStorage.getItem('precoPorLitro') || '';
     precoPorLitroInput.value = precoPorLitro;
     console.log('[financeiro.js] Preço/Litro carregado:', precoPorLitro || 'N/A');
+}
+
+function exportarDados() {
+    const dados = {
+        gastos: JSON.parse(localStorage.getItem('gastos') || '[]'),
+        ganhos: JSON.parse(localStorage.getItem('ganhos') || '[]'),
+        kmPorLitro: localStorage.getItem('kmPorLitro') || '',
+        precoPorLitro: localStorage.getItem('precoPorLitro') || '',
+        contatos: JSON.parse(localStorage.getItem('contatos') || '{}')
+    };
+    const dadosJSON = JSON.stringify(dados, null, 2);
+    const blob = new Blob([dadosJSON], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `motoca_br_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    const feedbackDiv = document.getElementById('backupFeedback');
+    if (feedbackDiv) {
+        feedbackDiv.textContent = 'Dados exportados com sucesso!';
+        feedbackDiv.style.display = 'block';
+        setTimeout(() => feedbackDiv.style.display = 'none', 3000);
+    }
+}
+
+function importarDados(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const dados = JSON.parse(e.target.result);
+            if (dados.gastos && Array.isArray(dados.gastos)) localStorage.setItem('gastos', JSON.stringify(dados.gastos));
+            if (dados.ganhos && Array.isArray(dados.ganhos)) localStorage.setItem('ganhos', JSON.stringify(dados.ganhos));
+            if (dados.kmPorLitro) localStorage.setItem('kmPorLitro', dados.kmPorLitro);
+            if (dados.precoPorLitro) localStorage.setItem('precoPorLitro', dados.precoPorLitro);
+            if (dados.contatos && typeof dados.contatos === 'object') localStorage.setItem('contatos', JSON.stringify(dados.contatos));
+            carregarGastos();
+            carregarKmPorLitro();
+            carregarPrecoPorLitro();
+            carregarSemanas();
+            carregarGanhos();
+            const feedbackDiv = document.getElementById('backupFeedback');
+            if (feedbackDiv) {
+                feedbackDiv.textContent = 'Dados importados com sucesso!';
+                feedbackDiv.style.display = 'block';
+                setTimeout(() => feedbackDiv.style.display = 'none', 3000);
+            }
+        } catch (error) {
+            console.error('[financeiro.js] Erro ao importar dados:', error);
+            alert('Erro ao importar dados: Arquivo inválido.');
+        }
+        event.target.value = '';
+    };
+    reader.readAsText(file);
 }

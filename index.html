@@ -72,6 +72,11 @@
                     <div id="buscandoSugestoes" class="form-text text-primary" style="display: none;">Buscando sugestões...</div>
                 </div>
 
+                <div class="form-group">
+                    <label for="contexto">Contexto (opcional, ex.: cidade):</label>
+                    <input type="text" id="contexto" placeholder="Ex.: São José dos Campos, SP" class="form-control">
+                </div>
+
                 <div id="paradas" class="form-group"></div>
                 <button type="button" id="btnAdicionarParada" class="btn btn-secondary mb-2">Adicionar Parada</button>
 
@@ -83,6 +88,7 @@
 
                 <div class="button-group">
                     <button type="button" id="btnCalcularRota" class="btn btn-primary">Buscar Rota</button>
+                    <button type="button" id="btnLimparCampos" class="btn btn-secondary">Limpar Campos</button>
                     <div id="botaoIniciarRota">
                         <button type="button" id="btnGo" class="btn btn-success">Iniciar Rota</button>
                     </div>
@@ -170,6 +176,14 @@
                 </div>
             </div>
 
+            <div class="backup-section mt-3">
+                <h4>Backup de Dados</h4>
+                <button type="button" id="btnExportarDados" class="btn btn-primary mr-2">Exportar Dados</button>
+                <button type="button" id="btnImportarDados" class="btn btn-secondary">Importar Dados</button>
+                <input type="file" id="inputImportarDados" accept=".json" style="display: none;">
+                <div id="backupFeedback" class="form-text text-success mt-2" style="display: none;"></div>
+            </div>
+
             <div class="gastos-section mt-3">
                 <h3>Adicionar Novo Gasto</h3>
                 <div class="form-group">
@@ -244,6 +258,12 @@
                 <div id="contatosFeedback" class="form-text text-success" style="display: none;">Contatos salvos com sucesso!</div>
             </div>
             <button type="button" id="btnSOS" class="btn btn-danger btn-lg">Enviar Alerta SOS</button>
+            <div class="mt-3">
+                <h4>Chamadas de Emergência</h4>
+                <button type="button" id="btnPolicia" class="btn btn-danger mr-2">Polícia (190)</button>
+                <button type="button" id="btnSamu" class="btn btn-danger mr-2">SAMU (192)</button>
+                <button type="button" id="btnBombeiros" class="btn btn-danger">Bombeiros (193)</button>
+            </div>
             <div class="mt-3 text-muted text-center">
                 Junte-se à nossa comunidade no WhatsApp! 
                 <a href="https://chat.whatsapp.com/IbsOuFuyRweCEzLMooCyVD" target="_blank" class="text-primary" aria-label="Entrar na comunidade do WhatsApp">Clique aqui</a>
@@ -286,5 +306,5 @@
             }
         });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9375df98b89b6748',t:'MTc0NTgzNjExMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

@@ -7,15 +7,17 @@ let timeoutBusca = null;
 let mapaPronto = false;
 
 const COORDENADAS_PADRAO = {
-    lat: -23.2237, // Coordenadas aproximadas de São José dos Campos
+    lat: -23.2237,
     lon: -45.9009
 };
 
 const ENDERECO_FIXO = {
     endereco: "Rua Caruaru, 55, Parque Industrial, São José dos Campos, São Paulo",
-    lat: -23.2582, // Aproximação para Parque Industrial, São José dos Campos
+    lat: -23.2582,
     lon: -45.8875
 };
+
+const MAX_CACHE_ENTRIES = 1000;
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[script.js] DOM carregado. Iniciando aplicação...');
@@ -41,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     configurarListeners();
     obterLocalizacaoAtual();
+    limparCacheAntigo();
     console.log('[script.js] Inicialização concluída.');
 });
 
@@ -79,6 +82,10 @@ function configurarListeners() {
     if (btnGo) btnGo.addEventListener('click', iniciarRota);
     else console.warn('[script.js] Botão #btnGo não encontrado.');
 
+    const btnLimparCampos = document.getElementById('btnLimparCampos');
+    if (btnLimparCampos) btnLimparCampos.addEventListener('click', limparCampos);
+    else console.warn('[script.js] Botão #btnLimparCampos não encontrado.');
+
     const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
         console.log('[script.js] Botão #themeToggle encontrado, adicionando listener.');
@@ -97,6 +104,18 @@ function configurarListeners() {
     }
 
     console.log('[script.js] Listeners da aba Rotas configurados.');
+}
+
+function limparCampos() {
+    document.getElementById('origem').value = '';
+    document.getElementById('contexto').value = '';
+    document.getElementById('destino').value = '';
+    document.getElementById('paradas').innerHTML = '';
+    paradasCount = 1;
+    limparCamadasDoMapa('tudo');
+    document.getElementById('resultadoRota').innerHTML = '';
+    rotaCoordenadas = [];
+    console.log('[script.js] Campos limpos.');
 }
 
 function obterLocalizacaoAtual() {
@@ -125,7 +144,6 @@ function obterLocalizacaoAtual() {
                 const enderecoFormatado = await obterEnderecoReverso(localizacaoAtual.lat, localizacaoAtual.lon);
                 const origemInput = document.getElementById('origem');
                 if (origemInput && !origemInput.value) {
-                    // Verificar se o endereço retornado está próximo ao endereço fixo
                     if (enderecoFormatado && !enderecoFormatado.includes("Parque Industrial")) {
                         console.warn('[script.js] Endereço retornado não corresponde ao Parque Industrial:', enderecoFormatado);
                         origemInput.value = ENDERECO_FIXO.endereco;
@@ -254,41 +272,48 @@ function configurarEventosBusca() {
 async function buscarSugestoes(inputId, datalistId) {
     const inputElement = document.getElementById(inputId);
     const datalistElement = document.getElementById(datalistId);
+    const contextoInput = document.getElementById('contexto');
     const buscandoDiv = document.getElementById('buscandoSugestoes');
     if (!inputElement || !datalistElement) return;
 
     const entrada = inputElement.value.trim();
-    if (entrada.length < 3) {
+    const contexto = contextoInput ? contextoInput.value.trim() : '';
+    if (entrada.length < 3 && !isCoordenada(entrada)) {
         datalistElement.innerHTML = '';
         return;
     }
 
-    if (cacheBusca[entrada]) {
-        preencherDatalist(datalistId, cacheBusca[entrada]);
+    if (isCoordenada(entrada)) {
+        const [lat, lon] = entrada.split(',').map(v => parseFloat(v.trim()));
+        datalistElement.innerHTML = `<option value="${entrada}">Coordenadas: ${lat}, ${lon}</option>`;
+        return;
+    }
+
+    const cacheKey = `sug_${entrada.toLowerCase()}_${contexto.toLowerCase()}`;
+    if (cacheBusca[cacheKey]) {
+        preencherDatalist(datalistId, cacheBusca[cacheKey]);
         return;
     }
 
     if (buscandoDiv) buscandoDiv.style.display = 'inline';
     try {
+        let query = encodeURIComponent(entrada);
+        if (contexto) query += `,${encodeURIComponent(contexto)}`;
         const viewboxParam = localizacaoAtual
             ? `&viewbox=${localizacaoAtual.lon - 0.5},${localizacaoAtual.lat + 0.5},${localizacaoAtual.lon + 0.5},${localizacaoAtual.lat - 0.5}&bounded=1`
             : '';
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(entrada)}&limit=5&addressdetails=1&countrycodes=BR${viewboxParam}&accept-language=pt-BR`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=10&addressdetails=1&countrycodes=BR${viewboxParam}&namedetails=1&accept-language=pt-BR`;
         console.log('[script.js] Buscando sugestões:', url);
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Nominatim suggestions API error! status: ${res.status}`);
         const data = await res.json();
-        const sugestoes = [...new Set(data.map(item => item.display_name))];
-        cacheBusca[entrada] = sugestoes;
-        try {
-            localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
-        } catch (e) {
-            console.warn('[script.js] Não foi possível salvar cache:', e);
-            if (e.name === 'QuotaExceededError') {
-                cacheBusca = {};
-                localStorage.removeItem('cacheBusca');
-            }
-        }
+        const sugestoes = data.map(item => ({
+            display_name: item.display_name,
+            type: item.type,
+            category: item.category
+        }));
+        cacheBusca[cacheKey] = sugestoes;
+        salvarCache();
         preencherDatalist(datalistId, sugestoes);
     } catch (error) {
         console.error('[script.js] Erro ao buscar sugestões:', error);
@@ -303,13 +328,29 @@ function preencherDatalist(datalistId, sugestoes) {
     datalist.innerHTML = '';
     sugestoes.forEach(sugestao => {
         const option = document.createElement('option');
-        option.value = sugestao;
+        const label = typeof sugestao === 'string' ? sugestao : `${sugestao.display_name} (${sugestao.category}/${sugestao.type})`;
+        option.value = typeof sugestao === 'string' ? sugestao : sugestao.display_name;
+        option.textContent = label;
         datalist.appendChild(option);
     });
 }
 
+function isCoordenada(entrada) {
+    const regex = /^-?\d+\.\d+,-?\d+\.\d+$/;
+    if (!regex.test(entrada)) return false;
+    const [lat, lon] = entrada.split(',').map(v => parseFloat(v));
+    return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+
 async function geocodificar(endereco) {
+    if (isCoordenada(endereco)) {
+        const [lat, lon] = endereco.split(',').map(v => parseFloat(v));
+        return [lat, lon];
+    }
+
     let enderecoLimpo = endereco.trim().replace(/\s*\([^)]*\)$/, '').replace(/,\s*\d{5}-\d{3},\s*Brasil$/, '');
+    const contexto = document.getElementById('contexto')?.value.trim();
+    if (contexto) enderecoLimpo += `, ${contexto}`;
     if (!enderecoLimpo) {
         console.warn('[script.js] Endereço vazio ou inválido após limpeza.');
         return null;
@@ -321,7 +362,7 @@ async function geocodificar(endereco) {
     }
 
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&limit=1&countrycodes=BR&accept-language=pt-BR`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&limit=1&countrycodes=BR&addressdetails=1&accept-language=pt-BR`;
         console.log('[script.js] Geocoding URL:', url);
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Nominatim geocoding API error! status: ${res.status}`);
@@ -332,15 +373,33 @@ async function geocodificar(endereco) {
         if (isNaN(lat) || isNaN(lon)) throw new Error(`Coordenadas inválidas para "${enderecoLimpo}"`);
         const coordenadas = [lat, lon];
         cacheBusca[cacheKey] = coordenadas;
-        try {
-            localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
-        } catch (e) {
-            console.warn('[script.js] Falha ao salvar cache geo:', e);
-        }
+        salvarCache();
         return coordenadas;
     } catch (error) {
         console.error(`[script.js] Erro na geocodificação de "${enderecoLimpo}":`, error);
         throw error;
+    }
+}
+
+function limparCacheAntigo() {
+    const entries = Object.keys(cacheBusca);
+    if (entries.length > MAX_CACHE_ENTRIES) {
+        const toRemove = entries.slice(0, entries.length - MAX_CACHE_ENTRIES);
+        toRemove.forEach(key => delete cacheBusca[key]);
+        salvarCache();
+        console.log('[script.js] Cache limpo, removidas', toRemove.length, 'entradas.');
+    }
+}
+
+function salvarCache() {
+    try {
+        localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
+    } catch (e) {
+        console.warn('[script.js] Não foi possível salvar cache:', e);
+        if (e.name === 'QuotaExceededError') {
+            cacheBusca = {};
+            localStorage.removeItem('cacheBusca');
+        }
     }
 }
 
