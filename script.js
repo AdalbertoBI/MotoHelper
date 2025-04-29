@@ -1,4 +1,4 @@
-const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58';
+const GRAPHHOPPER_API_KEY = '55b67cde-e051-409f-9440-171f4d6f52e0';
 let mapaPronto = false;
 let localizacaoAtual = null;
 let cidadeAtual = 'São José dos Campos';
