@@ -1,13 +1,14 @@
-const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58'; // Chave válida fornecida
+const GRAPHHOPPER_API_KEY = 'cef6b46d-c99b-42d4-beb0-65ad29fe4f58';
 let mapaPronto = false;
 let localizacaoAtual = null;
 let cidadeAtual = 'São José dos Campos';
 let paradasCount = 1;
 let timeoutBusca = null;
-let cacheBusca = {};
+let cacheBusca = JSON.parse(localStorage.getItem('cacheBusca') || '{}');
 let rotaCoordenadas = [];
 const COORDENADAS_PADRAO = { endereco: 'Parque Industrial, São José dos Campos, São Paulo', lat: -23.2582, lon: -45.8875 };
-const MAX_CACHE_ENTRIES = 1000;
+const MAX_CACHE_ENTRIES = 500; // Reduzido para evitar estouro
+const CACHE_EXPIRATION_DAYS = 30;
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[script.js] DOM carregado. Iniciando aplicação...');
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('[script.js] Falha ao inicializar o mapa.');
         const mapDiv = document.getElementById('map');
         if (mapDiv) {
-            mapDiv.innerHTML = '<p style="color:red; font-weight:bold;">Erro ao carregar o mapa. Tente recarregar a página.</p>';
+            mapDiv.innerHTML = '<p class="error">Erro ao carregar o mapa. Tente recarregar a página.</p>';
         }
     }
 
@@ -216,6 +217,7 @@ function adicionarParada() {
     novaParadaInput.placeholder = `Parada ${paradasCount}`;
     novaParadaInput.className = 'form-control parada-input';
     novaParadaInput.setAttribute('list', `sugestoesParada${paradasCount}`);
+    novaParadaInput.setAttribute('aria-label', `Parada ${paradasCount}`);
 
     const novaParadaDatalist = document.createElement('datalist');
     novaParadaDatalist.id = `sugestoesParada${paradasCount}`;
@@ -225,6 +227,7 @@ function adicionarParada() {
     btnRemover.textContent = '×';
     btnRemover.className = 'btn btn-danger btn-sm';
     btnRemover.style.marginLeft = '5px';
+    btnRemover.setAttribute('aria-label', `Remover parada ${paradasCount}`);
     btnRemover.onclick = () => paradasDiv.removeChild(novaParadaContainer);
 
     novaParadaContainer.appendChild(novaParadaInput);
@@ -360,17 +363,27 @@ async function geocodificar(endereco) {
 }
 
 function limparCacheAntigo() {
+    const now = Date.now();
+    const expirationMs = CACHE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+    Object.keys(cacheBusca).forEach(key => {
+        if (cacheBusca[key].timestamp && (now - cacheBusca[key].timestamp) > expirationMs) {
+            delete cacheBusca[key];
+        }
+    });
     const entries = Object.keys(cacheBusca);
     if (entries.length > MAX_CACHE_ENTRIES) {
         const toRemove = entries.slice(0, entries.length - MAX_CACHE_ENTRIES);
         toRemove.forEach(key => delete cacheBusca[key]);
-        salvarCache();
         console.log('[script.js] Cache limpo, removidas', toRemove.length, 'entradas.');
     }
+    salvarCache();
 }
 
 function salvarCache() {
     try {
+        Object.values(cacheBusca).forEach(entry => {
+            if (!entry.timestamp) entry.timestamp = Date.now();
+        });
         localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
     } catch (e) {
         console.warn('[script.js] Não foi possível salvar cache:', e);
@@ -460,10 +473,10 @@ async function calcularRota() {
 
         rotaCoordenadas = coordsParaApi;
         console.log('[script.js] Coordenadas válidas para API:', coordsParaApi);
-        resultadoRotaDiv.innerHTML = '<div class="loading">Calculando rota via GraphHopper...</div>';
+        resultadoRotaDiv.innerHTML = '<div class="loading">Calculando rota...</div>';
 
         const pointsQuery = coordsParaApi.map(coord => `point=${coord[0]},${coord[1]}`).join('&');
-        const url = `https://graphhopper.com/api/1/route?${pointsQuery}&vehicle=car&locale=pt-BR&points_encoded=false&instructions=true&key=${GRAPHHOPPER_API_KEY}`;
+        const url = `https://graphhopper.com/api/1/route?${pointsQuery}&vehicle=motorcycle&locale=pt-BR&points_encoded=false&instructions=true&key=${GRAPHHOPPER_API_KEY}`;
         console.log('[script.js] URL GraphHopper:', url);
 
         const response = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
@@ -575,7 +588,7 @@ function iniciarRota() {
     const waypointsCoord = rotaCoordenadas.slice(1, -1);
     const origemParam = `${origemCoord[0]},${origemCoord[1]}`;
     const destinoParam = `${destinoCoord[0]},${destinoCoord[1]}`;
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=driving`;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origemParam}&destination=${destinoParam}&travelmode=motorcycle`;
 
     if (waypointsCoord.length > 0) {
         const waypointsParam = waypointsCoord.map(coord => `${coord[0]},${coord[1]}`).join('|');

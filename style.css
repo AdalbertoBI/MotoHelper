@@ -68,10 +68,13 @@ body {
     position: relative;
 }
 
-h1 {
-    text-align: center;
+h1, h2, h3, h4 {
     color: var(--text-color);
     margin-bottom: 20px;
+}
+
+h1 {
+    text-align: center;
 }
 
 .tabs {
@@ -323,7 +326,7 @@ h1 {
         padding: 8px 12px;
     }
 
-    #map {
+    #map, #mapPesquisa {
         height: 300px;
     }
 }

@@ -1,135 +1,81 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[sos.js] Configurando listeners para SOS...');
+    console.log('[sos.js] DOM carregado. Configurando aba SOS...');
     const btnSalvarContato = document.getElementById('btnSalvarContato');
     if (btnSalvarContato) {
         btnSalvarContato.addEventListener('click', salvarContato);
+        console.log('[sos.js] Listener do botão Salvar Contato configurado.');
     } else {
-        console.warn('[sos.js] Botão #btnSalvarContato não encontrado.');
+        console.error('[sos.js] Botão #btnSalvarContato não encontrado.');
     }
+
     carregarContatos();
 });
 
 function salvarContato() {
+    console.log('[sos.js] Salvando contato...');
     const nomeInput = document.getElementById('nomeContato');
     const telefoneInput = document.getElementById('telefoneContato');
-    if (!nomeInput || !telefoneInput) {
-        console.error('[sos.js] Elementos do DOM ausentes.');
-        alert('Erro interno: Elementos da página ausentes.');
-        return;
-    }
+    const feedbackNome = document.getElementById('nomeContatoFeedback');
+    const feedbackTelefone = document.getElementById('telefoneContatoFeedback');
+    if (!nomeInput || !telefoneInput || !feedbackNome || !feedbackTelefone) return;
 
     const nome = nomeInput.value.trim();
-    const telefone = telefoneInput.value.trim().replace(/\D/g, ''); // Remove caracteres não numéricos
-    const telefoneRegex = /^\d{10,11}$/; // Aceita 10 ou 11 dígitos (DDD + número)
+    const telefone = telefoneInput.value.replace(/[^0-9]/g, '');
+    feedbackNome.classList.remove('text-success', 'text-danger');
+    feedbackTelefone.classList.remove('text-success', 'text-danger');
 
-    if (!nome) {
-        alert('Digite o nome do contato!');
-        nomeInput.focus();
+    let erros = [];
+    if (!nome) erros.push('Digite o nome do contato.');
+    if (!telefone || telefone.length < 10 || telefone.length > 11) {
+        erros.push('Digite um telefone válido (10 ou 11 dígitos).');
+    }
+
+    if (erros.length > 0) {
+        feedbackNome.textContent = erros[0] || '';
+        feedbackTelefone.textContent = erros[1] || erros[0] || '';
+        feedbackNome.classList.add('text-danger');
+        feedbackTelefone.classList.add('text-danger');
         return;
     }
-    if (!telefoneRegex.test(telefone)) {
-        alert('Digite um telefone válido (DDD + número, 10 ou 11 dígitos)!');
-        telefoneInput.focus();
-        return;
-    }
 
-    let contatos = [];
+    const contato = { nome, telefone };
     try {
-        contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
-        if (!Array.isArray(contatos)) throw new Error('Dados de contatos inválidos.');
-    } catch (e) {
-        console.error('[sos.js] Erro ao carregar contatos:', e);
-        contatos = [];
-    }
-
-    const novoContato = {
-        id: Date.now(),
-        nome,
-        telefone,
-        data: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    };
-    contatos.push(novoContato);
-
-    try {
+        let contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
+        contatos.push(contato);
         localStorage.setItem('contatos', JSON.stringify(contatos));
-        console.log('[sos.js] Contato salvo:', novoContato);
         carregarContatos();
         nomeInput.value = '';
         telefoneInput.value = '';
-        nomeInput.focus();
-        mostrarFeedback('Contato salvo com sucesso!');
+        feedbackNome.textContent = 'Contato salvo!';
+        feedbackNome.classList.add('text-success');
     } catch (e) {
-        console.error('[sos.js] Erro ao salvar contatos:', e);
-        alert('Erro ao salvar contato. Verifique o armazenamento do navegador.');
+        console.error('[sos.js] Erro ao salvar contato:', e);
+        feedbackNome.textContent = 'Erro ao salvar. Limpe o armazenamento.';
+        feedbackNome.classList.add('text-danger');
     }
 }
 
 function carregarContatos() {
-    const listaContatosUl = document.getElementById('listaContatos');
-    if (!listaContatosUl) {
-        console.error('[sos.js] Elemento #listaContatos não encontrado.');
-        return;
-    }
+    const listaContatos = document.getElementById('listaContatos');
+    if (!listaContatos) return;
 
-    let contatos = [];
-    try {
-        contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
-        if (!Array.isArray(contatos)) throw new Error('Dados de contatos inválidos.');
-    } catch (e) {
-        console.error('[sos.js] Erro ao carregar contatos:', e);
-        localStorage.setItem('contatos', '[]');
-        contatos = [];
-    }
+    let contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
+    listaContatos.innerHTML = '';
 
-    listaContatosUl.innerHTML = '';
-    if (contatos.length === 0) {
-        listaContatosUl.innerHTML = '<li class="list-group-item text-muted">Nenhum contato registrado.</li>';
-    } else {
-        contatos.sort((a, b) => b.id - a.id);
-        contatos.forEach(contato => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `
-                <span>${contato.data}: ${contato.nome} - <a href="tel:${contato.telefone}" title="Ligar">${formatarTelefone(contato.telefone)}</a></span>
-                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="excluirContato(${contato.id})" title="Excluir Contato">×</button>
-            `;
-            listaContatosUl.appendChild(li);
-        });
-    }
-    console.log('[sos.js] Contatos carregados:', contatos.length);
+    contatos.forEach((contato, index) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.innerHTML = `
+            ${contato.nome}: <a href="tel:${contato.telefone}">${contato.telefone}</a>
+            <button class="btn btn-danger btn-sm float-right" onclick="removerContato(${index})" aria-label="Remover contato">×</button>
+        `;
+        listaContatos.appendChild(li);
+    });
 }
 
-function formatarTelefone(telefone) {
-    if (telefone.length === 11) {
-        return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 7)}-${telefone.slice(7)}`;
-    } else if (telefone.length === 10) {
-        return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 6)}-${telefone.slice(6)}`;
-    }
-    return telefone;
+function removerContato(index) {
+    let contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
+    contatos.splice(index, 1);
+    localStorage.setItem('contatos', JSON.stringify(contatos));
+    carregarContatos();
 }
-
-function mostrarFeedback(mensagem) {
-    const feedbackDiv = document.createElement('div');
-    feedbackDiv.className = 'form-text text-success';
-    feedbackDiv.textContent = mensagem;
-    const btnSalvarContato = document.getElementById('btnSalvarContato');
-    if (btnSalvarContato) {
-        btnSalvarContato.insertAdjacentElement('afterend', feedbackDiv);
-        setTimeout(() => feedbackDiv.remove(), 3000);
-    }
-}
-
-window.excluirContato = function(idContato) {
-    if (!confirm('Tem certeza que deseja excluir este contato?')) return;
-    let contatos = [];
-    try {
-        contatos = JSON.parse(localStorage.getItem('contatos') || '[]');
-        contatos = contatos.filter(contato => contato.id !== idContato);
-        localStorage.setItem('contatos', JSON.stringify(contatos));
-        console.log('[sos.js] Contato excluído:', idContato);
-        carregarContatos();
-    } catch (e) {
-        console.error('[sos.js] Erro ao excluir contato:', e);
-        alert('Erro ao excluir contato. Verifique o armazenamento do navegador.');
-    }
-};

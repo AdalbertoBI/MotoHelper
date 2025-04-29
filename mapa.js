@@ -11,14 +11,14 @@ function inicializarMapa(localizacaoInicial = null) {
     const zoomInicial = 13;
     const isDarkMode = document.body.classList.contains('dark-mode');
 
-    const mapaDiv = document.getElementById('map');
+    const mapaDiv = document.getElementById('map') || document.getElementById('mapPesquisa');
     if (!mapaDiv) {
-        console.error('[mapa.js] Elemento com ID "map" não encontrado no HTML.');
+        console.error('[mapa.js] Elemento de mapa (#map ou #mapPesquisa) não encontrado no HTML.');
         document.querySelector('.container')?.insertAdjacentHTML('afterbegin', 
-            '<div class="error">Erro: O elemento do mapa (#map) não foi encontrado.</div>');
+            '<div class="error">Erro: O elemento do mapa não foi encontrado.</div>');
         return;
     }
-    console.log('[mapa.js] Elemento #map encontrado, inicializando mapa...');
+    console.log('[mapa.js] Elemento de mapa encontrado, inicializando...');
 
     if (map) {
         console.log('[mapa.js] Mapa já inicializado. Ajustando visão para:', centroInicial);
@@ -35,7 +35,7 @@ function inicializarMapa(localizacaoInicial = null) {
             throw new Error('Biblioteca Leaflet não carregada.');
         }
 
-        map = L.map('map', {
+        map = L.map(mapaDiv.id, {
             center: centroInicial,
             zoom: zoomInicial,
             zoomControl: true,
@@ -72,7 +72,7 @@ function inicializarMapa(localizacaoInicial = null) {
 
     } catch (error) {
         console.error('[mapa.js] Erro ao inicializar o mapa Leaflet:', error);
-        mapaDiv.innerHTML = '<p style="color:red; font-weight: bold;">Falha ao carregar o mapa. Verifique a conexão ou recarregue a página.</p>';
+        mapaDiv.innerHTML = '<p class="error">Falha ao carregar o mapa. Verifique a conexão ou recarregue a página.</p>';
     }
 }
 
@@ -120,106 +120,83 @@ function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
         return;
     }
 
-    console.log('[mapa.js] Adicionando marcadores de rota...');
     markersLayer.clearLayers();
+    console.log('[mapa.js] Adicionando marcadores...');
 
-    const iconeOrigem = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-    const iconeParada = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-    const iconeDestino = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-
-    const boundsCoords = [];
-
+    // Marcador de origem
     if (coordsOrigem && Array.isArray(coordsOrigem) && coordsOrigem.length === 2) {
-        L.marker(coordsOrigem, { icon: iconeOrigem })
-            .bindPopup('Origem')
-            .addTo(markersLayer);
-        boundsCoords.push(coordsOrigem);
-        console.log('[mapa.js] Marcador Origem adicionado:', coordsOrigem);
+        L.marker(coordsOrigem, {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: '<span style="background-color: green; border-radius: 50%; width: 20px; height: 20px; display: block;"></span>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            })
+        }).addTo(markersLayer).bindPopup('Origem');
     } else {
         console.warn('[mapa.js] Coordenadas de origem inválidas:', coordsOrigem);
     }
 
-    if (coordsParadas && Array.isArray(coordsParadas)) {
-        coordsParadas.forEach((coord, index) => {
-            if (coord && Array.isArray(coord) && coord.length === 2) {
-                L.marker(coord, { icon: iconeParada })
-                    .bindPopup(`Parada ${index + 1}`)
-                    .addTo(markersLayer);
-                boundsCoords.push(coord);
-                console.log(`[mapa.js] Marcador Parada ${index + 1} adicionado:`, coord);
-            } else {
-                console.warn(`[mapa.js] Coordenadas da parada ${index + 1} inválidas:`, coord);
-            }
-        });
-    }
+    // Marcadores de paradas
+    coordsParadas.forEach((coord, index) => {
+        if (Array.isArray(coord) && coord.length === 2) {
+            L.marker(coord, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: `<span style="background-color: blue; border-radius: 50%; width: 20px; height: 20px; display: block;">${index + 1}</span>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).addTo(markersLayer).bindPopup(`Parada ${index + 1}`);
+        } else {
+            console.warn('[mapa.js] Coordenadas de parada inválidas:', coord);
+        }
+    });
 
+    // Marcador de destino
     if (coordsDestino && Array.isArray(coordsDestino) && coordsDestino.length === 2) {
-        L.marker(coordsDestino, { icon: iconeDestino })
-            .bindPopup('Destino')
-            .addTo(markersLayer);
-        boundsCoords.push(coordsDestino);
-        console.log('[mapa.js] Marcador Destino adicionado:', coordsDestino);
+        L.marker(coordsDestino, {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: '<span style="background-color: red; border-radius: 50%; width: 20px; height: 20px; display: block;"></span>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            })
+        }).addTo(markersLayer).bindPopup('Destino');
     } else {
         console.warn('[mapa.js] Coordenadas de destino inválidas:', coordsDestino);
     }
 
-    if (boundsCoords.length > 0) {
-        map.fitBounds(boundsCoords, { padding: [50, 50], maxZoom: 15 });
-        setTimeout(() => map.invalidateSize(), 100);
-        console.log('[mapa.js] Zoom ajustado para mostrar todos os marcadores de rota.');
-    } else {
-        console.warn('[mapa.js] Nenhum marcador válido para ajustar o zoom.');
+    // Ajustar mapa para mostrar todos os marcadores
+    if (coordsOrigem && coordsDestino) {
+        const bounds = L.latLngBounds([coordsOrigem, coordsDestino]);
+        coordsParadas.forEach(coord => bounds.extend(coord));
+        map.fitBounds(bounds, { padding: [50, 50] });
+        console.log('[mapa.js] Mapa ajustado para mostrar todos os marcadores.');
     }
 }
 
-function desenharRota(geometry) {
+function desenharRota(coordinates) {
     if (!map || !routeLayer) {
         console.error('[mapa.js] Mapa ou camada de rota não inicializada.');
         return;
     }
-    if (!geometry || !Array.isArray(geometry) || geometry.length === 0) {
-        console.warn('[mapa.js] Geometria da rota inválida ou vazia.');
+
+    routeLayer.clearLayers();
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length === 0) {
+        console.warn('[mapa.js] Nenhuma coordenada fornecida para desenhar a rota.');
         return;
     }
 
-    console.log('[mapa.js] Desenhando a linha da rota...');
-    routeLayer.clearLayers();
+    console.log('[mapa.js] Desenhando rota com', coordinates.length, 'coordenadas.');
+    const polyline = L.polyline(coordinates, {
+        color: '#007bff',
+        weight: 5,
+        opacity: 0.7
+    }).addTo(routeLayer);
 
-    const latLngs = geometry.map(coord => {
-        if (Array.isArray(coord) && coord.length === 2) {
-            return [coord[1], coord[0]];
-        }
-        console.warn('[mapa.js] Coordenada inválida na geometria da rota:', coord);
-        return null;
-    }).filter(coord => coord !== null);
-
-    if (latLngs.length > 0) {
-        const polyline = L.polyline(latLngs, {
-            color: '#007bff',
-            weight: 6,
-            opacity: 0.8,
-            lineJoin: 'round',
-            lineCap: 'round'
-        }).addTo(routeLayer);
-
-        map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 15 });
-        setTimeout(() => map.invalidateSize(), 100);
-        console.log('[mapa.js] Rota desenhada com sucesso.');
-    } else {
-        console.warn('[mapa.js] Nenhuma coordenada válida para desenhar a rota.');
-    }
+    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+    console.log('[mapa.js] Rota desenhada e mapa ajustado.');
 }
 
 function limparCamadasDoMapa(tipo = 'tudo') {
@@ -228,10 +205,10 @@ function limparCamadasDoMapa(tipo = 'tudo') {
         return;
     }
 
-    if (tipo === 'tudo' || tipo === 'rota') {
+    if (tipo === 'tudo' || tipo === 'rotas') {
         if (routeLayer) {
             routeLayer.clearLayers();
-            console.log('[mapa.js] Camada de rota limpa.');
+            console.log('[mapa.js] Camada de rotas limpa.');
         }
     }
     if (tipo === 'tudo' || tipo === 'marcadores') {

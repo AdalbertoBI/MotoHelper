@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#007bff">
+    <meta name="description" content="Motoca BR: Aplicativo para entregadores com rotas, fretes, finanças e contatos de emergência.">
     <title>Motoca BR</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="/img/icon-192x192.png">
 </head>
 <body>
     <div class="container">
-        <button id="themeToggle" class="theme-toggle" aria-label="Alternar tema">☀️</button>
+        <button id="themeToggle" class="theme-toggle" aria-label="Alternar entre tema claro e escuro">☀️</button>
         <h1>Motoca BR</h1>
-        <div class="tabs">
-            <button class="tablink active" onclick="openTab(event, 'Rotas')" aria-selected="true">Rotas</button>
-            <button class="tablink" onclick="openTab(event, 'Frete')" aria-selected="false">Frete</button>
-            <button class="tablink" onclick="openTab(event, 'Pesquisa')" aria-selected="false">Pesquisa</button>
-            <button class="tablink" onclick="openTab(event, 'Financeiro')" aria-selected="false">Financeiro</button>
-            <button class="tablink" onclick="openTab(event, 'SOS')" aria-selected="false">SOS</button>
+        <div class="tabs" role="tablist">
+            <button class="tablink active" onclick="openTab(event, 'Rotas')" aria-selected="true" role="tab">Rotas</button>
+            <button class="tablink" onclick="openTab(event, 'Frete')" aria-selected="false" role="tab">Frete</button>
+            <button class="tablink" onclick="openTab(event, 'Pesquisa')" aria-selected="false" role="tab">Pesquisa</button>
+            <button class="tablink" onclick="openTab(event, 'Financeiro')" aria-selected="false" role="tab">Financeiro</button>
+            <button class="tablink" onclick="openTab(event, 'SOS')" aria-selected="false" role="tab">SOS</button>
         </div>
 
         <!-- Aba Rotas -->
-        <div id="Rotas" class="tabcontent active">
+        <div id="Rotas" class="tabcontent active" role="tabpanel">
             <h2>Otimizar Rotas</h2>
             <form id="formRota">
                 <div class="form-group">
@@ -65,27 +67,27 @@
         </div>
 
         <!-- Aba Frete -->
-        <div id="Frete" class="tabcontent">
+        <div id="Frete" class="tabcontent" role="tabpanel">
             <h2>Calcular Frete</h2>
             <div class="form-group">
                 <label for="km">Distância (km):</label>
                 <input type="number" id="km" class="form-control" placeholder="Digite a distância" min="0" step="0.1" aria-describedby="kmFeedback">
-                <div id="kmFeedback" class="form-text" style="display: none;"></div>
+                <div id="kmFeedback" class="form-text"></div>
             </div>
             <div class="form-group">
                 <label for="peso">Peso (kg):</label>
                 <input type="number" id="peso" class="form-control" placeholder="Digite o peso (opcional)" min="0" step="0.1" value="0" aria-describedby="pesoFeedback">
-                <div id="pesoFeedback" class="form-text" style="display: none;"></div>
+                <div id="pesoFeedback" class="form-text"></div>
             </div>
             <div class="form-group">
                 <label for="custoPorKm">Custo por Km (R$):</label>
                 <input type="number" id="custoPorKm" class="form-control" placeholder="Digite o custo por km" min="0" step="0.01" value="1.5" aria-describedby="custoPorKmFeedback">
-                <div id="custoPorKmFeedback" class="form-text" style="display: none;"></div>
+                <div id="custoPorKmFeedback" class="form-text"></div>
             </div>
             <div class="form-group">
                 <label for="custoPorKg">Custo por Kg (R$):</label>
                 <input type="number" id="custoPorKg" class="form-control" placeholder="Digite o custo por kg (opcional)" min="0" step="0.01" value="0" aria-describedby="custoPorKgFeedback">
-                <div id="custoPorKgFeedback" class="form-text" style="display: none;"></div>
+                <div id="custoPorKgFeedback" class="form-text"></div>
             </div>
             <button type="button" id="btnCalcularFrete" class="btn btn-primary" aria-label="Calcular frete">Calcular</button>
             <p id="resultadoFrete" class="mt-2">Valor do Frete: R$ 0.00</p>
@@ -99,15 +101,18 @@
         </div>
 
         <!-- Aba Pesquisa -->
-        <div id="Pesquisa" class="tabcontent">
+        <div id="Pesquisa" class="tabcontent" role="tabpanel">
             <h2>Pesquisar Estabelecimentos</h2>
             <p>Busque estabelecimentos ou locais próximos à sua localização atual (requer permissão).</p>
             <div class="form-group">
                 <label for="tipoPesquisa">O que deseja encontrar?</label>
-                <input type="text" id="tipoPesquisa" class="form-control" placeholder="Ex: posto, restaurante, oficina, hospital" aria-describedby="tipoPesquisaFeedback">
-                <div id="tipoPesquisaFeedback" class="form-text" style="display: none;"></div>
+                <input type="text" id="tipoPesquisa" class="form-control" placeholder="Ex: posto, restaurante, oficina, hospital, padaria" aria-describedby="tipoPesquisaFeedback">
+                <div id="tipoPesquisaFeedback" class="form-text"></div>
             </div>
             <button type="button" id="btnBuscar" class="btn btn-primary" aria-label="Pesquisar estabelecimentos">Pesquisar</button>
+            <div id="mapPesquisa" style="height: 400px; width: 100%; margin-top: 15px; margin-bottom: 15px; border: 1px solid #ccc;">
+                <p style="padding: 10px; color: #666;">Carregando mapa...</p>
+            </div>
             <ul id="listaResultados" class="list-group mt-3"></ul>
             <div class="mt-3 text-muted text-center">
                 Junte-se à nossa comunidade no WhatsApp! 
@@ -119,22 +124,23 @@
         </div>
 
         <!-- Aba Financeiro -->
-        <div id="Financeiro" class="tabcontent">
+        <div id="Financeiro" class="tabcontent" role="tabpanel">
             <h2>Gerenciar Financeiro</h2>
             <div class="config-section mb-3 p-3 border rounded">
                 <h3>Configurações de Consumo</h3>
                 <div class="form-group">
                     <label for="kmPorLitro">Consumo (Km por Litro):</label>
-                    <input type="number" id="kmPorLitro" class="form-control" placeholder="Ex: 35.50" min="0" step="0.01" pattern="^\d*\.?\d{0,2}$" aria-describedby="kmPorLitroFeedback">
+                    <input type="number" id="kmPorLitro" class="form-control" placeholder="Ex: 35.50" min="0" max="50" step="0.01" pattern="^\d*\.?\d{0,2}$" aria-describedby="kmPorLitroFeedback">
                     <button type="button" id="btnSalvarKmPorLitro" class="btn btn-secondary btn-sm mt-1" aria-label="Salvar consumo por litro">Salvar Consumo</button>
-                    <div id="kmPorLitroFeedback" class="form-text" style="display: none;" aria-live="polite"></div>
+                    <div id="kmPorLitroFeedback" class="form-text" aria-live="polite"></div>
                 </div>
                 <div class="form-group mt-2">
                     <label for="precoPorLitro">Preço do Combustível (R$/litro):</label>
-                    <input type="number" id="precoPorLitro" class="form-control" placeholder="Ex: 5.89" min="0" step="0.01" pattern="^\d*\.?\d{0,2}$" aria-describedby="precoPorLitroFeedback">
+                    <input type="number" id="precoPorLitro" class="form-control" placeholder="Ex: 5.89" min="0" max="20" step="0.01" pattern="^\d*\.?\d{0,2}$" aria-describedby="precoPorLitroFeedback">
                     <button type="button" id="btnSalvarPrecoPorLitro" class="btn btn-secondary btn-sm mt-1" aria-label="Salvar preço por litro">Salvar Preço</button>
-                    <div id="precoPorLitroFeedback" class="form-text" style="display: none;" aria-live="polite"></div>
+                    <div id="precoPorLitroFeedback" class="form-text" aria-live="polite"></div>
                 </div>
+                <button type="button" id="btnLimparFinanceiro" class="btn btn-danger btn-sm mt-2" aria-label="Limpar todos os dados financeiros">Limpar Tudo</button>
             </div>
 
             <div class="gastos-section mt-3">
@@ -142,12 +148,12 @@
                 <div class="form-group">
                     <label for="tipoGasto">Tipo de Gasto:</label>
                     <input type="text" id="tipoGasto" class="form-control" placeholder="Ex: Combustível, Manutenção, Lanche" aria-describedby="tipoGastoFeedback">
-                    <div id="tipoGastoFeedback" class="form-text" style="display: none;"></div>
+                    <div id="tipoGastoFeedback" class="form-text"></div>
                 </div>
                 <div class="form-group">
                     <label for="valorGasto">Valor (R$):</label>
                     <input type="number" id="valorGasto" class="form-control" placeholder="Ex: 50.00" min="0" step="0.01" aria-describedby="valorGastoFeedback">
-                    <div id="valorGastoFeedback" class="form-text" style="display: none;"></div>
+                    <div id="valorGastoFeedback" class="form-text"></div>
                 </div>
                 <button type="button" id="btnSalvarGasto" class="btn btn-primary" aria-label="Adicionar gasto">Adicionar Gasto</button>
                 <h4 class="mt-3">Gastos Registrados</h4>
@@ -160,17 +166,17 @@
                 <div class="form-group">
                     <label for="plataformaGanho">Plataforma:</label>
                     <input type="text" id="plataformaGanho" class="form-control" placeholder="Ex: iFood, Uber, Rappi" aria-describedby="plataformaGanhoFeedback">
-                    <div id="plataformaGanhoFeedback" class="form-text" style="display: none;"></div>
+                    <div id="plataformaGanhoFeedback" class="form-text"></div>
                 </div>
                 <div class="form-group">
                     <label for="kmRodadoGanho">Km Rodado:</label>
                     <input type="number" id="kmRodadoGanho" class="form-control" placeholder="Ex: 10.5" min="0" step="0.1" aria-describedby="kmRodadoGanhoFeedback">
-                    <div id="kmRodadoGanhoFeedback" class="form-text" style="display: none;"></div>
+                    <div id="kmRodadoGanhoFeedback" class="form-text"></div>
                 </div>
                 <div class="form-group">
                     <label for="valorGanho">Valor (R$):</label>
                     <input type="number" id="valorGanho" class="form-control" placeholder="Ex: 25.00" min="0" step="0.01" aria-describedby="valorGanhoFeedback">
-                    <div id="valorGanhoFeedback" class="form-text" style="display: none;"></div>
+                    <div id="valorGanhoFeedback" class="form-text"></div>
                 </div>
                 <button type="button" id="btnSalvarGanho" class="btn btn-primary" aria-label="Adicionar ganho">Adicionar Ganho</button>
                 <h4 class="mt-3">Ganhos Registrados</h4>
@@ -194,18 +200,18 @@
         </div>
 
         <!-- Aba SOS -->
-        <div id="SOS" class="tabcontent">
+        <div id="SOS" class="tabcontent" role="tabpanel">
             <h2>Contatos de Emergência</h2>
             <p>Adicione contatos para acessar rapidamente em emergências.</p>
             <div class="form-group">
                 <label for="nomeContato">Nome:</label>
                 <input type="text" id="nomeContato" class="form-control" placeholder="Digite o nome do contato" aria-describedby="nomeContatoFeedback">
-                <div id="nomeContatoFeedback" class="form-text" style="display: none;"></div>
+                <div id="nomeContatoFeedback" class="form-text"></div>
             </div>
             <div class="form-group">
                 <label for="telefoneContato">Telefone:</label>
-                <input type="tel" id="telefoneContato" class="form-control" placeholder="Ex: (12) 12345-6789" aria-describedby="telefoneContatoFeedback">
-                <div id="telefoneContatoFeedback" class="form-text" style="display: none;"></div>
+                <input type="tel" id="telefoneContato" class="form-control" placeholder="Ex: (12) 12345-6789" pattern="[0-9]{10,11}" aria-describedby="telefoneContatoFeedback">
+                <div id="telefoneContatoFeedback" class="form-text"></div>
             </div>
             <button type="button" id="btnSalvarContato" class="btn btn-primary" aria-label="Adicionar contato de emergência">Adicionar Contato</button>
             <ul id="listaContatos" class="list-group mt-3"></ul>
@@ -244,7 +250,7 @@
                 currentTab.classList.add('active');
                 evt.currentTarget.classList.add('active');
                 evt.currentTarget.setAttribute('aria-selected', 'true');
-                if (tabName === 'Rotas' && typeof map !== 'undefined' && map) {
+                if ((tabName === 'Rotas' || tabName === 'Pesquisa') && typeof map !== 'undefined' && map) {
                     setTimeout(() => map.invalidateSize(), 100);
                 }
             }
