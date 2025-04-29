@@ -38,6 +38,8 @@ function inicializarMapa(localizacaoInicial = null) {
         map = L.map('map', {
             center: centroInicial,
             zoom: zoomInicial,
+            zoomControl: true,
+            attributionControl: true
         });
 
         const tileUrl = isDarkMode
@@ -50,7 +52,9 @@ function inicializarMapa(localizacaoInicial = null) {
         tileLayer = L.tileLayer(tileUrl, {
             attribution: tileAttribution,
             maxZoom: 19,
-            minZoom: 5
+            minZoom: 5,
+            tileSize: 512,
+            zoomOffset: -1
         }).addTo(map);
 
         routeLayer = L.layerGroup().addTo(map);
@@ -91,7 +95,9 @@ function atualizarTilesMapa(isDarkMode) {
     tileLayer = L.tileLayer(tileUrl, {
         attribution: tileAttribution,
         maxZoom: 19,
-        minZoom: 5
+        minZoom: 5,
+        tileSize: 512,
+        zoomOffset: -1
     }).addTo(map);
 
     setTimeout(() => map.invalidateSize(), 100);
@@ -119,17 +125,17 @@ function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
 
     const iconeOrigem = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
         iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
     const iconeParada = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
         iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
     const iconeDestino = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
         iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
 
@@ -170,7 +176,7 @@ function adicionarMarcadores(coordsOrigem, coordsParadas, coordsDestino) {
     }
 
     if (boundsCoords.length > 0) {
-        map.fitBounds(boundsCoords, { padding: [50, 50] });
+        map.fitBounds(boundsCoords, { padding: [50, 50], maxZoom: 15 });
         setTimeout(() => map.invalidateSize(), 100);
         console.log('[mapa.js] Zoom ajustado para mostrar todos os marcadores de rota.');
     } else {
@@ -208,7 +214,7 @@ function desenharRota(geometry) {
             lineCap: 'round'
         }).addTo(routeLayer);
 
-        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 15 });
         setTimeout(() => map.invalidateSize(), 100);
         console.log('[mapa.js] Rota desenhada com sucesso.');
     } else {

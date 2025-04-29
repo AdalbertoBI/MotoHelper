@@ -7,15 +7,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function buscarLocais() {
     const listaResultadosUl = document.getElementById('listaResultados');
-    const tipoPesquisaInput = document.getElementById('tipoPesquisa');
-    if (!listaResultadosUl || !tipoPesquisaInput) {
+    const tipoPesquisaSelect = document.getElementById('tipoPesquisa');
+    if (!listaResultadosUl || !tipoPesquisaSelect) {
         console.error('[pesquisa.js] Elementos #listaResultados ou #tipoPesquisa não encontrados.');
         return;
     }
 
-    const tipoPesquisa = tipoPesquisaInput.value.trim().toLowerCase();
+    const tipoPesquisa = tipoPesquisaSelect.value.trim().toLowerCase();
     if (!tipoPesquisa) {
-        alert('Por favor, informe o tipo de local a pesquisar (ex.: farmácia, restaurante, oficina).');
+        alert('Por favor, selecione um tipo de estabelecimento para pesquisar.');
         return;
     }
 
@@ -27,7 +27,7 @@ async function buscarLocais() {
 
     if (!mapaPronto || !map) {
         console.warn('[pesquisa.js] Mapa não inicializado. Tentando inicializar...');
-        inicializarMapa();
+        inicializarMapaPesquisa();
         if (!map) {
             listaResultadosUl.innerHTML = '<li class="list-group-item list-group-item-danger">Erro: Mapa não pôde ser carregado.</li>';
             return;
@@ -49,7 +49,7 @@ async function buscarLocais() {
             const raioBuscaMetros = 5000;
             const tipoMapeado = mapearTipoPesquisa(tipoPesquisa);
             if (!tipoMapeado) {
-                listaResultadosUl.innerHTML = `<li class="list-group-item list-group-item-warning">Tipo de pesquisa "${tipoPesquisa}" não reconhecido. Tente: farmácia, restaurante, oficina, hospital, posto.</li>`;
+                listaResultadosUl.innerHTML = `<li class="list-group-item list-group-item-warning">Tipo de pesquisa "${tipoPesquisa}" não reconhecido.</li>`;
                 return;
             }
             const overpassQuery = `[out:json][timeout:25];node["${tipoMapeado.key}"="${tipoMapeado.value}"](around:${raioBuscaMetros},${lat},${lng});out body 50;`;
@@ -122,12 +122,48 @@ function mapearTipoPesquisa(tipo) {
         'oficina': { key: 'shop', value: 'car_repair' },
         'hospital': { key: 'amenity', value: 'hospital' },
         'banco': { key: 'amenity', value: 'bank' },
-        'supermercado': { key: 'shop', value: 'supermarket' }
+        'supermercado': { key: 'shop', value: 'supermercado' }
     };
     return mapeamento[tipo.toLowerCase()];
 }
 
-// Funções de mapa que estavam faltando
+function inicializarMapaPesquisa(coordenadas = [-23.2237, -45.9009]) {
+    console.log('[pesquisa.js] Inicializando mapa com coordenadas:', coordenadas);
+    if (map) {
+        console.log('[pesquisa.js] Mapa já inicializado, atualizando visualização.');
+        map.setView(coordenadas, 13);
+        return;
+    }
+
+    try {
+        map = L.map('mapPesquisa', {
+            zoomControl: true,
+            attributionControl: true
+        }).setView(coordenadas, 13);
+        console.log('[pesquisa.js] Mapa criado com sucesso.');
+
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        const tileUrl = isDarkMode
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+        L.tileLayer(tileUrl, {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+            tileSize: 512,
+            zoomOffset: -1
+        }).addTo(map);
+
+        map.attributionControl.setPrefix('');
+    } catch (error) {
+        console.error('[pesquisa.js] Erro ao inicializar o mapa:', error);
+        const mapDiv = document.getElementById('mapPesquisa');
+        if (mapDiv) {
+            mapDiv.innerHTML = '<p style="color:red; font-weight:bold;">Erro ao carregar o mapa. Tente recarregar a página.</p>';
+        }
+    }
+}
+
 function adicionarMarcadorUsuario(lat, lng) {
     if (!map) return;
     const userIcon = L.icon({
