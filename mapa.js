@@ -1,79 +1,60 @@
-let map = null;
+// let map = null; // Removed duplicate declaration
 let routeLayer = null;
 let markersLayer = null;
 let tileLayer = null;
 
-function inicializarMapa(localizacaoInicial = null) {
-    const fallbackLocalizacao = [-23.1791, -45.8872];
-    const centroInicial = Array.isArray(localizacaoInicial) && localizacaoInicial.length === 2
-        ? localizacaoInicial
-        : fallbackLocalizacao;
-    const zoomInicial = 13;
-    const isDarkMode = document.body.classList.contains('dark-mode');
+let map;
 
+function inicializarMapa(localizacaoInicial = [-23.1791, -45.8872]) {
     const mapaDiv = document.getElementById('map');
     if (!mapaDiv) {
         console.error('[mapa.js] Elemento com ID "map" não encontrado no HTML.');
-        document.querySelector('.container')?.insertAdjacentHTML('afterbegin', 
-            '<div class="error">Erro: O elemento do mapa (#map) não foi encontrado.</div>');
-        return;
-    }
-    console.log('[mapa.js] Elemento #map encontrado, inicializando mapa...');
-
-    if (map) {
-        console.log('[mapa.js] Mapa já inicializado. Ajustando visão para:', centroInicial);
-        map.setView(centroInicial, zoomInicial);
-        routeLayer?.clearLayers();
-        markersLayer?.clearLayers();
-        setTimeout(() => map.invalidateSize(), 100);
         return;
     }
 
-    console.log('[mapa.js] Inicializando o mapa em:', centroInicial);
-    try {
-        if (typeof L === 'undefined' || !L.map) {
-            throw new Error('Biblioteca Leaflet não carregada.');
-        }
+    // Verifica se o elemento #map está visível
+    if (mapaDiv.offsetWidth === 0 || mapaDiv.offsetHeight === 0) {
+        console.warn('[mapa.js] Elemento #map está oculto. Inicialização adiada.');
+        return;
+    }
 
+    if (!map) {
         map = L.map('map', {
-            center: centroInicial,
-            zoom: zoomInicial,
+            center: localizacaoInicial,
+            zoom: 13,
             zoomControl: true,
             attributionControl: true
         });
 
-        const tileUrl = isDarkMode
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        const tileAttribution = isDarkMode
-            ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
-            : '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
-        tileLayer = L.tileLayer(tileUrl, {
-            attribution: tileAttribution,
-            maxZoom: 19,
-            minZoom: 5,
-            tileSize: 512,
-            zoomOffset: -1
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
         }).addTo(map);
 
-        routeLayer = L.layerGroup().addTo(map);
-        markersLayer = L.layerGroup().addTo(map);
-
-        console.log('[mapa.js] Mapa inicializado e camadas criadas com sucesso!');
-        setTimeout(() => {
-            map.invalidateSize();
-            console.log('[mapa.js] Mapa redimensionado após inicialização.');
-        }, 100);
-
-        map.on('moveend zoomend', () => {
-            console.log('[mapa.js] Mapa movido/zoom. Centro:', map.getCenter(), 'Zoom:', map.getZoom());
-        });
-
-    } catch (error) {
-        console.error('[mapa.js] Erro ao inicializar o mapa Leaflet:', error);
-        mapaDiv.innerHTML = '<p style="color:red; font-weight: bold;">Falha ao carregar o mapa. Verifique a conexão ou recarregue a página.</p>';
+        console.log('[mapa.js] Mapa inicializado com sucesso!');
+    } else {
+        map.setView(localizacaoInicial, 13);
+        setTimeout(() => map.invalidateSize(), 100);
     }
+}
+
+// Observa mudanças no DOM para inicializar o mapa quando o #map estiver visível
+function observarMapa() {
+    const mapaDiv = document.getElementById('map');
+    if (!mapaDiv) {
+        console.error('[mapa.js] Elemento com ID "map" não encontrado no HTML.');
+        return;
+    }
+
+    const observer = new MutationObserver(() => {
+        if (mapaDiv.offsetWidth > 0 && mapaDiv.offsetHeight > 0) {
+            console.log('[mapa.js] Elemento #map agora está visível. Inicializando mapa...');
+            inicializarMapa();
+            observer.disconnect(); // Para de observar após inicializar o mapa
+        }
+    });
+
+    observer.observe(mapaDiv, { attributes: true, childList: true, subtree: true });
 }
 
 function atualizarTilesMapa(isDarkMode) {

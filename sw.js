@@ -5,6 +5,7 @@ const urlsToCache = [
     '/index.html',
     '/style.css',
     '/script.js',
+    '/frete.js',
     '/Financeiro.js'
 ];
 
@@ -14,7 +15,9 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Cache aberto');
-                return cache.addAll(urlsToCache);
+                return cache.addAll(urlsToCache).catch(err => {
+                    console.error('Erro ao adicionar arquivos ao cache:', err);
+                });
             })
     );
 });
