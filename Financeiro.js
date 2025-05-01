@@ -1,6 +1,15 @@
 const MAX_REGISTROS = 500;
 const STORAGE_EXPIRATION_DAYS = 90;
 
+// Função de debounce para evitar chamadas frequentes
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
 // Verifica disponibilidade de espaço no localStorage
 function checkStorageAvailability(data) {
     try {
@@ -119,14 +128,33 @@ document.addEventListener('DOMContentLoaded', () => {
     atualizarSemanas();
 });
 
-// Configura eventos dos botões
+// Configura eventos dos botões e inputs
 function configurarEventos() {
     console.log('[financeiro.js] Configurando eventos...');
-    
+
+    const kmPorLitroInput = document.getElementById('kmPorLitro');
+    const precoPorLitroInput = document.getElementById('precoPorLitro');
+    const semanaConsulta = document.getElementById('semanaConsulta');
+
+    // Debounce para salvamento automático
+    const debouncedSalvarKmPorLitro = debounce(salvarKmPorLitro, 1000);
+    const debouncedSalvarPrecoPorLitro = debounce(salvarPrecoPorLitro, 1000);
+
+    if (kmPorLitroInput) {
+        kmPorLitroInput.addEventListener('input', debouncedSalvarKmPorLitro);
+        kmPorLitroInput.addEventListener('blur', salvarKmPorLitro);
+    } else {
+        console.warn('[financeiro.js] Input #kmPorLitro não encontrado.');
+    }
+
+    if (precoPorLitroInput) {
+        precoPorLitroInput.addEventListener('input', debouncedSalvarPrecoPorLitro);
+        precoPorLitroInput.addEventListener('blur', salvarPrecoPorLitro);
+    } else {
+        console.warn('[financeiro.js] Input #precoPorLitro não encontrado.');
+    }
+
     const buttons = [
-        { id: 'btnSalvarKmPorLitro', handler: salvarKmPorLitro },
-        { id: 'btnSalvarPrecoPorLitro', handler: salvarPrecoPorLitro },
-        { id: 'btnLimparFinanceiro', handler: limparFinanceiro },
         { id: 'btnSalvarGasto', handler: salvarGasto },
         { id: 'btnSalvarGanho', handler: salvarGanho },
     ];
@@ -140,7 +168,6 @@ function configurarEventos() {
         }
     });
 
-    const semanaConsulta = document.getElementById('semanaConsulta');
     if (semanaConsulta) {
         semanaConsulta.addEventListener('change', carregarGanhos);
     } else {
@@ -179,10 +206,19 @@ function salvarKmPorLitro() {
     }
 
     const kmPorLitro = parseFloat(kmPorLitroInput.value);
-    if (isNaN(kmPorLitro) || kmPorLitro <= 0 || kmPorLitro > 50) {
+    feedback.className = 'form-text';
+    feedback.textContent = '';
+
+    if (isNaN(kmPorLitro) || kmPorLitro <= 0) {
         feedback.className = 'form-text text-danger';
-        feedback.textContent = 'Insira um valor válido entre 0 e 50.';
+        feedback.textContent = 'Insira um valor válido maior que 0.';
+        kmPorLitroInput.classList.remove('saved');
         return;
+    }
+
+    if (kmPorLitro > 100) {
+        feedback.className = 'form-text text-warning';
+        feedback.textContent = 'Valor alto detectado. Confirme se está correto.';
     }
 
     try {
@@ -190,6 +226,7 @@ function salvarKmPorLitro() {
             localStorage.setItem('kmPorLitro', kmPorLitro.toString());
             feedback.className = 'form-text text-success';
             feedback.textContent = 'Consumo salvo com sucesso!';
+            kmPorLitroInput.classList.add('saved');
             showToast('Consumo salvo!', 'success');
             console.log('[financeiro.js] Km por litro salvo:', kmPorLitro);
         } else {
@@ -198,6 +235,7 @@ function salvarKmPorLitro() {
     } catch (e) {
         feedback.className = 'form-text text-danger';
         feedback.textContent = 'Erro ao salvar consumo.';
+        kmPorLitroInput.classList.remove('saved');
         showToast('Erro ao salvar consumo.', 'error');
         console.error('[financeiro.js] Erro ao salvar kmPorLitro:', e);
     }
@@ -214,10 +252,19 @@ function salvarPrecoPorLitro() {
     }
 
     const precoPorLitro = parseFloat(precoPorLitroInput.value);
-    if (isNaN(precoPorLitro) || precoPorLitro <= 0 || precoPorLitro > 20) {
+    feedback.className = 'form-text';
+    feedback.textContent = '';
+
+    if (isNaN(precoPorLitro) || precoPorLitro <= 0) {
         feedback.className = 'form-text text-danger';
-        feedback.textContent = 'Insira um valor válido entre 0 e 20.';
+        feedback.textContent = 'Insira um valor válido maior que 0.';
+        precoPorLitroInput.classList.remove('saved');
         return;
+    }
+
+    if (precoPorLitro > 50) {
+        feedback.className = 'form-text text-warning';
+        feedback.textContent = 'Preço alto detectado. Confirme se está correto.';
     }
 
     try {
@@ -225,6 +272,7 @@ function salvarPrecoPorLitro() {
             localStorage.setItem('precoPorLitro', precoPorLitro.toString());
             feedback.className = 'form-text text-success';
             feedback.textContent = 'Preço salvo com sucesso!';
+            precoPorLitroInput.classList.add('saved');
             showToast('Preço salvo!', 'success');
             console.log('[financeiro.js] Preço por litro salvo:', precoPorLitro);
         } else {
@@ -233,6 +281,7 @@ function salvarPrecoPorLitro() {
     } catch (e) {
         feedback.className = 'form-text text-danger';
         feedback.textContent = 'Erro ao salvar preço.';
+        precoPorLitroInput.classList.remove('saved');
         showToast('Erro ao salvar preço.', 'error');
         console.error('[financeiro.js] Erro ao salvar precoPorLitro:', e);
     }
