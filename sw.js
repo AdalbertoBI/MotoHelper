@@ -1,4 +1,3 @@
-// sw.js
 const CACHE_NAME = 'motocabr-cache-v1';
 const urlsToCache = [
     './', // ou './index.html'
@@ -15,9 +14,16 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Cache aberto');
-                return cache.addAll(urlsToCache).catch(err => {
-                    console.error('Erro ao adicionar arquivos ao cache:', err);
-                });
+                return Promise.all(
+                    urlsToCache.map(url => {
+                        return cache.add(url).catch(err => {
+                            console.error(`Erro ao adicionar ${url} ao cache:`, err);
+                        });
+                    })
+                );
+            })
+            .catch(err => {
+                console.error('Erro ao abrir o cache:', err);
             })
     );
 });

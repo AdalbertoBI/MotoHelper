@@ -1,9 +1,7 @@
-// let map = null; // Removed duplicate declaration
+let map;
 let routeLayer = null;
 let markersLayer = null;
 let tileLayer = null;
-
-let map;
 
 function inicializarMapa(localizacaoInicial = [-23.1791, -45.8872]) {
     const mapaDiv = document.getElementById('map');
@@ -30,6 +28,10 @@ function inicializarMapa(localizacaoInicial = [-23.1791, -45.8872]) {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
+
+        // Inicializa as camadas
+        markersLayer = L.layerGroup().addTo(map);
+        routeLayer = L.layerGroup().addTo(map);
 
         console.log('[mapa.js] Mapa inicializado com sucesso!');
     } else {
