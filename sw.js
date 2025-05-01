@@ -1,12 +1,17 @@
-const CACHE_NAME = 'motocabr-cache-v3'; // Alterado para v3 para forçar atualização
+const CACHE_NAME = 'motocabr-cache-v4'; // Alterado para v4 para forçar atualização
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/script.js',
-    '/mapa.js',
-    '/frete.js',
-    '/financeiro.js'
+    '/MotocaBR/',
+    '/MotocaBR/index.html',
+    '/MotocaBR/style.css',
+    '/MotocaBR/script.js',
+    '/MotocaBR/mapa.js',
+    '/MotocaBR/frete.js',
+    '/MotocaBR/financeiro.js',
+    '/MotocaBR/manifest.json',
+    '/MotocaBR/img/icon-192x192.png',
+    '/MotocaBR/img/icon-512x512.png',
+    '/MotocaBR/img/icon-144x144.png',
+    '/MotocaBR/img/icon-96x96.png'
 ];
 
 // Instala o Service Worker e armazena arquivos em cache
@@ -56,7 +61,7 @@ self.addEventListener('fetch', event => {
                 }
                 return fetch(event.request).catch(() => {
                     // Fallback para quando a requisição falhar (offline)
-                    return caches.match('/index.html');
+                    return caches.match('/MotocaBR/index.html');
                 });
             })
     );

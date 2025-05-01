@@ -1,7 +1,7 @@
 {
     "name": "Motoca BR",
     "short_name": "Motoca BR",
-    "start_url": "/",
+    "start_url": "/MotocaBR/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#007bff",
@@ -15,8 +15,19 @@
             "src": "img/icon-512x512.png",
             "sizes": "512x512",
             "type": "image/png"
+        },
+        {
+            "src": "img/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png"
+        },
+        {
+            "src": "img/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png"
         }
     ],
     "orientation": "portrait",
-    "scope": "/"
+    "scope": "/MotocaBR/",
+    "prefer_related_applications": false
 }

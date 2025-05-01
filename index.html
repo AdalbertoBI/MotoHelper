@@ -51,6 +51,37 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="img/icon-192x192.png" type="image/png">
+    <style>
+        /* Estilo para o prompt de instalação */
+        .install-prompt {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #007bff;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-width: 90%;
+            text-align: center;
+        }
+        .install-prompt button {
+            background-color: white;
+            color: #007bff;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .install-prompt button:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -211,6 +242,13 @@
                 <a href="https://www.instagram.com/betomotoquinha/" target="_blank" class="text-primary" aria-label="Seguir no Instagram">Clique aqui</a>
             </div>
         </div>
+
+        <!-- Prompt de Instalação -->
+        <div id="installPrompt" class="install-prompt">
+            <p>Deseja instalar o Motoca BR como um app?</p>
+            <button id="installYes">Sim</button>
+            <button id="installNo">Não</button>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -255,7 +293,7 @@
         // Verifica se o protocolo é http ou https
         if (location.protocol === 'http:' || location.protocol === 'https:') {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/MotocaBR/sw.js') // Caminho corrigido
+                navigator.serviceWorker.register('/MotocaBR/sw.js')
                     .then(reg => {
                         console.log('Service Worker registrado com sucesso:', reg);
                     })
@@ -268,6 +306,71 @@
         }
     } else {
         console.warn('Service Workers não são suportados neste navegador.');
+    }
+
+    // Verificação de instalação e prompt para instalar o PWA
+    let deferredPrompt;
+    const installPrompt = document.getElementById('installPrompt');
+    const installYes = document.getElementById('installYes');
+    const installNo = document.getElementById('installNo');
+
+    // Verifica se o app já está rodando em modo standalone
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+    if (!isStandalone) {
+        // Escuta o evento beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Impede que o navegador mostre o prompt padrão
+            e.preventDefault();
+            // Armazena o evento para uso posterior
+            deferredPrompt = e;
+            // Exibe o prompt personalizado
+            installPrompt.style.display = 'block';
+        });
+
+        // Quando o usuário clicar em "Sim"
+        installYes.addEventListener('click', () => {
+            installPrompt.style.display = 'none';
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuário aceitou instalar o PWA');
+                    } else {
+                        console.log('Usuário recusou instalar o PWA');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        // Quando o usuário clicar em "Não"
+        installNo.addEventListener('click', () => {
+            installPrompt.style.display = 'none';
+            deferredPrompt = null;
+        });
+    }
+
+    // Adiciona suporte básico a gestos (exemplo: voltar ao arrastar para a esquerda)
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    });
+
+    function handleSwipe() {
+        const swipeThreshold = 100; // Distância mínima para considerar um swipe
+        if (touchStartX - touchEndX > swipeThreshold) {
+            // Swipe para a esquerda (pode ser usado para "voltar", se aplicável)
+            console.log('Swipe para a esquerda detectado');
+            // Implementar lógica de navegação, se necessário
+        }
     }
     </script>
 </body>
