@@ -1,4 +1,4 @@
-const MAX_REGISTROS = 500;
+const MAX_REGISTROS = 200; // Reduzido de 500 para 200
 const STORAGE_EXPIRATION_DAYS = 90;
 
 // Função de debounce para evitar chamadas frequentes
@@ -23,9 +23,9 @@ function checkStorageAvailability(data) {
                 totalSize += ((localStorage[key].length + key.length) * 2);
             }
         }
-        if (totalSize > 4.5 * 1024 * 1024) {
+        if (totalSize > 4 * 1024 * 1024) { // Reduzido de 4.5 MB para 4 MB
             console.warn('[financeiro.js] localStorage próximo do limite:', totalSize / (1024 * 1024), 'MB');
-            // Tentar limpar cacheBusca para liberar espaço
+            // Tentar limpar cacheBusca
             try {
                 localStorage.removeItem('cacheBusca');
                 console.log('[financeiro.js] cacheBusca removido para liberar espaço.');
@@ -35,24 +35,46 @@ function checkStorageAvailability(data) {
                         totalSize += ((localStorage[key].length + key.length) * 2);
                     }
                 }
-                if (totalSize > 4.5 * 1024 * 1024) {
-                    return false;
+                if (totalSize > 4 * 1024 * 1024) {
+                    // Tentar reduzir gastos e ganhos
+                    let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
+                    let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
+                    if (gastos.length > MAX_REGISTROS / 2) gastos = gastos.slice(-MAX_REGISTROS / 2);
+                    if (ganhos.length > MAX_REGISTROS / 2) ganhos = ganhos.slice(-MAX_REGISTROS / 2);
+                    localStorage.setItem('gastos', compressData(gastos));
+                    localStorage.setItem('ganhos', compressData(ganhos));
+                    console.log('[financeiro.js] gastos e ganhos reduzidos para liberar espaço.');
+                    totalSize = 0;
+                    for (let key in localStorage) {
+                        if (localStorage.hasOwnProperty(key)) {
+                            totalSize += ((localStorage[key].length + key.length) * 2);
+                        }
+                    }
+                    if (totalSize > 4 * 1024 * 1024) {
+                        return false;
+                    }
                 }
             } catch (e) {
-                console.error('[financeiro.js] Erro ao limpar cacheBusca:', e);
+                console.error('[financeiro.js] Erro ao limpar cacheBusca ou dados:', e);
                 return false;
             }
         }
         return true;
     } catch (e) {
         console.error('[financeiro.js] Espaço insuficiente no localStorage:', e);
-        // Tentar limpar cacheBusca como última tentativa
+        // Tentar limpar cacheBusca e reduzir dados como última tentativa
         try {
             localStorage.removeItem('cacheBusca');
-            console.log('[financeiro.js] cacheBusca removido após falha inicial.');
+            let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
+            let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
+            if (gastos.length > MAX_REGISTROS / 2) gastos = gastos.slice(-MAX_REGISTROS / 2);
+            if (ganhos.length > MAX_REGISTROS / 2) ganhos = ganhos.slice(-MAX_REGISTROS / 2);
+            localStorage.setItem('gastos', compressData(gastos));
+            localStorage.setItem('ganhos', compressData(ganhos));
+            console.log('[financeiro.js] cacheBusca removido e dados reduzidos após falha inicial.');
             return true; // Tentar novamente após limpar
         } catch (e) {
-            console.error('[financeiro.js] Falha ao limpar cacheBusca:', e);
+            console.error('[financeiro.js] Falha ao limpar dados:', e);
             return false;
         }
     }
@@ -131,7 +153,7 @@ function limparDadosAntigos() {
         }
     } catch (e) {
         console.error('[financeiro.js] Erro ao limpar dados antigos:', e);
-        showToast('Erro ao limpar dados antigos. Tente novamente.', 'error');
+        showToast('Erro ao limpar dados antigos. Considere limpar os dados financeiros manualmente.', 'error');
     }
 }
 
@@ -142,6 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isIncognito()) {
         showToast('Modo anônimo detectado. O salvamento pode não funcionar corretamente.', 'error');
         console.warn('[financeiro.js] Modo anônimo detectado.');
+    }
+
+    // Limpeza inicial para remover dados corrompidos ou excessivos
+    try {
+        let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
+        let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
+        if (gastos.length > MAX_REGISTROS || ganhos.length > MAX_REGISTROS) {
+            limparDadosAntigos();
+        }
+    } catch (e) {
+        console.error('[financeiro.js] Erro na verificação inicial de dados:', e);
     }
 
     limparDadosAntigos();
@@ -246,6 +279,7 @@ function salvarKmPorLitro() {
     }
 
     try {
+        limparDadosAntigos(); // Limpar dados antigos antes de salvar
         if (checkStorageAvailability({ kmPorLitro })) {
             localStorage.setItem('kmPorLitro', kmPorLitro.toString());
             feedback.className = 'form-text text-success';
@@ -258,9 +292,9 @@ function salvarKmPorLitro() {
         }
     } catch (e) {
         feedback.className = 'form-text text-danger';
-        feedback.textContent = 'Erro ao salvar consumo.';
+        feedback.textContent = 'Erro ao salvar consumo. O armazenamento está cheio. Considere limpar os dados financeiros.';
         kmPorLitroInput.classList.remove('saved');
-        showToast('Erro ao salvar consumo.', 'error');
+        showToast('Erro ao salvar consumo. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao salvar kmPorLitro:', e);
     }
 }
@@ -292,6 +326,7 @@ function salvarPrecoPorLitro() {
     }
 
     try {
+        limparDadosAntigos(); // Limpar dados antigos antes de salvar
         if (checkStorageAvailability({ precoPorLitro })) {
             localStorage.setItem('precoPorLitro', precoPorLitro.toString());
             feedback.className = 'form-text text-success';
@@ -304,9 +339,9 @@ function salvarPrecoPorLitro() {
         }
     } catch (e) {
         feedback.className = 'form-text text-danger';
-        feedback.textContent = 'Erro ao salvar preço.';
+        feedback.textContent = 'Erro ao salvar preço. O armazenamento está cheio. Considere limpar os dados financeiros.';
         precoPorLitroInput.classList.remove('saved');
-        showToast('Erro ao salvar preço.', 'error');
+        showToast('Erro ao salvar preço. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao salvar precoPorLitro:', e);
     }
 }
@@ -381,6 +416,7 @@ function salvarGasto() {
     };
 
     try {
+        limparDadosAntigos(); // Limpar dados antigos antes de salvar
         let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
         gastos.push(novoGasto);
         if (gastos.length > MAX_REGISTROS) gastos = gastos.slice(-MAX_REGISTROS);
@@ -398,8 +434,8 @@ function salvarGasto() {
         }
     } catch (e) {
         tipoFeedback.className = 'form-text text-danger';
-        tipoFeedback.textContent = 'Erro ao salvar gasto.';
-        showToast('Erro ao salvar gasto.', 'error');
+        tipoFeedback.textContent = 'Erro ao salvar gasto. O armazenamento está cheio. Considere limpar os dados financeiros.';
+        showToast('Erro ao salvar gasto. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao salvar gasto:', e);
     }
 }
@@ -462,7 +498,7 @@ function removerGasto(index) {
             throw new Error('Espaço insuficiente no localStorage.');
         }
     } catch (e) {
-        showToast('Erro ao remover gasto.', 'error');
+        showToast('Erro ao remover gasto. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao remover gasto:', e);
     }
 }
@@ -520,6 +556,7 @@ function salvarGanho() {
     };
 
     try {
+        limparDadosAntigos(); // Limpar dados antigos antes de salvar
         let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
         ganhos.push(novoGanho);
         if (ganhos.length > MAX_REGISTROS) ganhos = ganhos.slice(-MAX_REGISTROS);
@@ -538,8 +575,8 @@ function salvarGanho() {
         }
     } catch (e) {
         plataformaFeedback.className = 'form-text text-danger';
-        plataformaFeedback.textContent = 'Erro ao salvar ganho.';
-        showToast('Erro ao salvar ganho.', 'error');
+        plataformaFeedback.textContent = 'Erro ao salvar ganho. O armazenamento está cheio. Considere limpar os dados financeiros.';
+        showToast('Erro ao salvar ganho. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao salvar ganho:', e);
     }
 }
@@ -617,7 +654,7 @@ function removerGanho(index) {
             throw new Error('Espaço insuficiente no localStorage.');
         }
     } catch (e) {
-        showToast('Erro ao remover ganho.', 'error');
+        showToast('Erro ao remover ganho. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao remover ganho:', e);
     }
 }
