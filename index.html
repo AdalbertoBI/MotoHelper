@@ -255,7 +255,7 @@
         // Verifica se o protocolo é http ou https
         if (location.protocol === 'http:' || location.protocol === 'https:') {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('/MotocaBR/sw.js') // Caminho corrigido
                     .then(reg => {
                         console.log('Service Worker registrado com sucesso:', reg);
                     })
