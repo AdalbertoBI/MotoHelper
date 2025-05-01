@@ -1,4 +1,4 @@
-const GRAPHHOPPER_API_KEY = '55b67cde-e051-409f-9440-171f4d6f52e0'; // Chave válida fornecida
+const GRAPHHOPPER_API_KEY = '55b67cde-e051-409f-9440-171f4d6f52e0';
 let mapaPronto = false;
 let localizacaoAtual = null;
 let cidadeAtual = 'São José dos Campos';
@@ -7,7 +7,18 @@ let timeoutBusca = null;
 let cacheBusca = {};
 let rotaCoordenadas = [];
 const COORDENADAS_PADRAO = { endereco: 'Parque Industrial, São José dos Campos, São Paulo', lat: -23.2582, lon: -45.8875 };
-const MAX_CACHE_ENTRIES = 1000;
+const MAX_CACHE_ENTRIES = 200; // Reduzido de 1000 para 200
+const MAX_CACHE_SIZE = 3 * 1024 * 1024; // 3 MB limite para cacheBusca
+
+// Função para calcular o tamanho do cache em bytes
+function calcularTamanhoCache(data) {
+    try {
+        return new Blob([JSON.stringify(data)]).size;
+    } catch (e) {
+        console.warn('[script.js] Erro ao calcular tamanho do cache:', e);
+        return 0;
+    }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[script.js] DOM carregado. Iniciando aplicação...');
@@ -360,23 +371,37 @@ async function geocodificar(endereco) {
 }
 
 function limparCacheAntigo() {
-    const entries = Object.keys(cacheBusca);
-    if (entries.length > MAX_CACHE_ENTRIES) {
-        const toRemove = entries.slice(0, entries.length - MAX_CACHE_ENTRIES);
+    let entries = Object.keys(cacheBusca);
+    let cacheSize = calcularTamanhoCache(cacheBusca);
+    
+    // Remover entradas se exceder o número máximo ou o tamanho máximo
+    while (entries.length > MAX_CACHE_ENTRIES || cacheSize > MAX_CACHE_SIZE) {
+        const toRemove = entries.slice(0, Math.max(1, entries.length - MAX_CACHE_ENTRIES));
         toRemove.forEach(key => delete cacheBusca[key]);
-        salvarCache();
-        console.log('[script.js] Cache limpo, removidas', toRemove.length, 'entradas.');
+        entries = Object.keys(cacheBusca);
+        cacheSize = calcularTamanhoCache(cacheBusca);
+        console.log('[script.js] Cache limpo, removidas', toRemove.length, 'entradas. Tamanho atual:', cacheSize / (1024 * 1024), 'MB');
     }
+    salvarCache();
 }
 
 function salvarCache() {
     try {
-        localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
+        const cacheSize = calcularTamanhoCache(cacheBusca);
+        if (cacheSize > MAX_CACHE_SIZE) {
+            console.warn('[script.js] Cache excede o limite de tamanho:', cacheSize / (1024 * 1024), 'MB');
+            limparCacheAntigo();
+        }
+        if (cacheSize > 0) {
+            localStorage.setItem('cacheBusca', JSON.stringify(cacheBusca));
+            console.log('[script.js] Cache salvo, tamanho:', cacheSize / (1024 * 1024), 'MB');
+        }
     } catch (e) {
         console.warn('[script.js] Não foi possível salvar cache:', e);
         if (e.name === 'QuotaExceededError') {
             cacheBusca = {};
             localStorage.removeItem('cacheBusca');
+            console.log('[script.js] Cache resetado devido a QuotaExceededError.');
         }
     }
 }

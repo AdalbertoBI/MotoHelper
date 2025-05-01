@@ -25,12 +25,36 @@ function checkStorageAvailability(data) {
         }
         if (totalSize > 4.5 * 1024 * 1024) {
             console.warn('[financeiro.js] localStorage próximo do limite:', totalSize / (1024 * 1024), 'MB');
-            return false;
+            // Tentar limpar cacheBusca para liberar espaço
+            try {
+                localStorage.removeItem('cacheBusca');
+                console.log('[financeiro.js] cacheBusca removido para liberar espaço.');
+                totalSize = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalSize += ((localStorage[key].length + key.length) * 2);
+                    }
+                }
+                if (totalSize > 4.5 * 1024 * 1024) {
+                    return false;
+                }
+            } catch (e) {
+                console.error('[financeiro.js] Erro ao limpar cacheBusca:', e);
+                return false;
+            }
         }
         return true;
     } catch (e) {
         console.error('[financeiro.js] Espaço insuficiente no localStorage:', e);
-        return false;
+        // Tentar limpar cacheBusca como última tentativa
+        try {
+            localStorage.removeItem('cacheBusca');
+            console.log('[financeiro.js] cacheBusca removido após falha inicial.');
+            return true; // Tentar novamente após limpar
+        } catch (e) {
+            console.error('[financeiro.js] Falha ao limpar cacheBusca:', e);
+            return false;
+        }
     }
 }
 
