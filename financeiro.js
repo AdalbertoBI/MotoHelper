@@ -1,17 +1,15 @@
 const MAX_REGISTROS = 200;
 const STORAGE_EXPIRATION_DAYS = 90;
 
-// Função de debounce para evitar chamadas frequentes
 function debounce(func, wait) {
     let timeout;
     return function (...args) {
-        const context = this; // Armazena o contexto atual
+        const context = this;
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), wait);
     };
 }
 
-// Verifica disponibilidade de espaço no localStorage
 function checkStorageAvailability(data) {
     try {
         const testKey = '__test__';
@@ -36,13 +34,10 @@ function checkStorageAvailability(data) {
                     }
                 }
                 if (totalSize > 4 * 1024 * 1024) {
-                    let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-                    let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
-                    if (gastos.length > MAX_REGISTROS / 2) gastos = gastos.slice(-MAX_REGISTROS / 2);
-                    if (ganhos.length > MAX_REGISTROS / 2) ganhos = ganhos.slice(-MAX_REGISTROS / 2);
-                    localStorage.setItem('gastos', compressData(gastos));
-                    localStorage.setItem('ganhos', compressData(ganhos));
-                    console.log('[financeiro.js] gastos e ganhos reduzidos para liberar espaço.');
+                    let registros = decompressData(localStorage.getItem('registros') || compressData([]));
+                    if (registros.length > MAX_REGISTROS) registros = registros.slice(-MAX_REGISTROS);
+                    localStorage.setItem('registros', compressData(registros));
+                    console.log('[financeiro.js] registros reduzidos para liberar espaço.');
                     totalSize = 0;
                     for (let key in localStorage) {
                         if (localStorage.hasOwnProperty(key)) {
@@ -63,12 +58,9 @@ function checkStorageAvailability(data) {
         console.error('[financeiro.js] Espaço insuficiente no localStorage:', e);
         try {
             localStorage.removeItem('cacheBusca');
-            let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-            let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
-            if (gastos.length > MAX_REGISTROS / 2) gastos = gastos.slice(-MAX_REGISTROS / 2);
-            if (ganhos.length > MAX_REGISTROS / 2) ganhos = ganhos.slice(-MAX_REGISTROS / 2);
-            localStorage.setItem('gastos', compressData(gastos));
-            localStorage.setItem('ganhos', compressData(ganhos));
+            let registros = decompressData(localStorage.getItem('registros') || compressData([]));
+            if (registros.length > MAX_REGISTROS) registros = registros.slice(-MAX_REGISTROS);
+            localStorage.setItem('registros', compressData(registros));
             console.log('[financeiro.js] cacheBusca removido e dados reduzidos após falha inicial.');
             return true;
         } catch (e) {
@@ -78,7 +70,6 @@ function checkStorageAvailability(data) {
     }
 }
 
-// Comprime dados para JSON
 function compressData(data) {
     try {
         return JSON.stringify(data);
@@ -88,7 +79,6 @@ function compressData(data) {
     }
 }
 
-// Descomprime dados JSON
 function decompressData(compressed) {
     try {
         return JSON.parse(compressed || '[]');
@@ -98,7 +88,6 @@ function decompressData(compressed) {
     }
 }
 
-// Verifica modo anônimo
 function isIncognito() {
     try {
         localStorage.setItem('__test_incognito__', 'test');
@@ -109,7 +98,6 @@ function isIncognito() {
     }
 }
 
-// Exibe notificação toast
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -129,22 +117,17 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// Limpa dados antigos do localStorage
 function limparDadosAntigos() {
     const now = Date.now();
     const expirationMs = STORAGE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-    let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-    let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
+    let registros = decompressData(localStorage.getItem('registros') || compressData([]));
 
-    gastos = gastos.filter(g => now - new Date(g.data).getTime() <= expirationMs);
-    ganhos = ganhos.filter(g => now - new Date(g.data).getTime() <= expirationMs);
+    registros = registros.filter(r => now - new Date(r.data).getTime() <= expirationMs);
 
     try {
-        if (gastos.length > MAX_REGISTROS) gastos = gastos.slice(-MAX_REGISTROS);
-        if (ganhos.length > MAX_REGISTROS) ganhos = ganhos.slice(-MAX_REGISTROS);
-        if (checkStorageAvailability({ gastos, ganhos })) {
-            localStorage.setItem('gastos', compressData(gastos));
-            localStorage.setItem('ganhos', compressData(ganhos));
+        if (registros.length > MAX_REGISTROS) registros = registros.slice(-MAX_REGISTROS);
+        if (checkStorageAvailability({ registros })) {
+            localStorage.setItem('registros', compressData(registros));
             console.log('[financeiro.js] Dados antigos limpos.');
         } else {
             throw new Error('Espaço insuficiente no localStorage.');
@@ -155,7 +138,14 @@ function limparDadosAntigos() {
     }
 }
 
-// Configura a aba Financeiro
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[financeiro.js] DOM carregado. Configurando aba Financeiro...');
 
@@ -165,9 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-        let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-        let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
-        if (gastos.length > MAX_REGISTROS || ganhos.length > MAX_REGISTROS) {
+        let registros = decompressData(localStorage.getItem('registros') || compressData([]));
+        if (registros.length > MAX_REGISTROS) {
             limparDadosAntigos();
         }
     } catch (e) {
@@ -176,13 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     limparDadosAntigos();
     carregarConfiguracoes();
-    carregarGastos();
-    carregarGanhos();
+    carregarRegistros();
     configurarEventos();
     atualizarSemanas();
 });
 
-// Configura eventos dos botões e inputs
 function configurarEventos() {
     console.log('[financeiro.js] Configurando eventos...');
 
@@ -207,28 +194,20 @@ function configurarEventos() {
         console.warn('[financeiro.js] Input #precoPorLitro não encontrado.');
     }
 
-    const buttons = [
-        { id: 'btnSalvarGasto', handler: salvarGasto },
-        { id: 'btnSalvarGanho', handler: salvarGanho },
-    ];
-
-    buttons.forEach(({ id, handler }) => {
-        const button = document.getElementById(id);
-        if (button) {
-            button.addEventListener('click', handler);
-        } else {
-            console.warn(`[financeiro.js] Botão #${id} não encontrado.`);
-        }
-    });
+    const btnSalvarRegistro = document.getElementById('btnSalvarRegistro');
+    if (btnSalvarRegistro) {
+        btnSalvarRegistro.addEventListener('click', salvarRegistro);
+    } else {
+        console.warn('[financeiro.js] Botão #btnSalvarRegistro não encontrado.');
+    }
 
     if (semanaConsulta) {
-        semanaConsulta.addEventListener('change', carregarGanhos);
+        semanaConsulta.addEventListener('change', carregarRegistros);
     } else {
         console.warn('[financeiro.js] Select #semanaConsulta não encontrado.');
     }
 }
 
-// Carrega configurações salvas
 function carregarConfiguracoes() {
     const kmPorLitroInput = document.getElementById('kmPorLitro');
     const precoPorLitroInput = document.getElementById('precoPorLitro');
@@ -248,7 +227,6 @@ function carregarConfiguracoes() {
     }
 }
 
-// Salva Km por Litro
 function salvarKmPorLitro() {
     const kmPorLitroInput = document.getElementById('kmPorLitro');
     const feedback = document.getElementById('kmPorLitroFeedback');
@@ -295,7 +273,6 @@ function salvarKmPorLitro() {
     }
 }
 
-// Salva Preço por Litro
 function salvarPrecoPorLitro() {
     const precoPorLitroInput = document.getElementById('precoPorLitro');
     const feedback = document.getElementById('precoPorLitroFeedback');
@@ -342,35 +319,38 @@ function salvarPrecoPorLitro() {
     }
 }
 
-// Salva um novo gasto
-function salvarGasto() {
-    const tipoGastoInput = document.getElementById('tipoGasto');
-    const valorGastoInput = document.getElementById('valorGasto');
-    const tipoFeedback = document.getElementById('tipoGastoFeedback');
-    const valorFeedback = document.getElementById('valorGastoFeedback');
+function salvarRegistro() {
+    const tipoRegistroSelect = document.getElementById('tipoRegistro');
+    const descricaoInput = document.getElementById('descricaoRegistro');
+    const valorInput = document.getElementById('valorRegistro');
+    const tipoFeedback = document.getElementById('tipoRegistroFeedback');
+    const descricaoFeedback = document.getElementById('descricaoRegistroFeedback');
+    const valorFeedback = document.getElementById('valorRegistroFeedback');
 
-    if (!tipoGastoInput || !valorGastoInput || !tipoFeedback || !valorFeedback) {
-        console.error('[financeiro.js] Elementos de gasto não encontrados.');
+    if (!tipoRegistroSelect || !descricaoInput || !valorInput || !tipoFeedback || !descricaoFeedback || !valorFeedback) {
+        console.error('[financeiro.js] Elementos de registro não encontrados.');
         return;
     }
 
-    const tipoGasto = tipoGastoInput.value.trim();
-    const valorGasto = parseFloat(valorGastoInput.value);
+    const tipo = tipoRegistroSelect.value;
+    const descricao = descricaoInput.value.trim();
+    const valor = parseFloat(valorInput.value);
 
     tipoFeedback.textContent = '';
+    descricaoFeedback.textContent = '';
     valorFeedback.textContent = '';
 
     let hasError = false;
-    if (!tipoGasto) {
-        tipoFeedback.className = 'form-text text-danger';
-        tipoFeedback.textContent = 'Insira o tipo de gasto.';
+    if (!descricao) {
+        descricaoFeedback.className = 'form-text text-danger';
+        descricaoFeedback.textContent = 'Insira a descrição.';
         hasError = true;
-    } else if (tipoGasto.length > 50) {
-        tipoFeedback.className = 'form-text text-danger';
-        tipoFeedback.textContent = 'O tipo de gasto deve ter até 50 caracteres.';
+    } else if (descricao.length > 50) {
+        descricaoFeedback.className = 'form-text text-danger';
+        descricaoFeedback.textContent = 'A descrição deve ter até 50 caracteres.';
         hasError = true;
     }
-    if (isNaN(valorGasto) || valorGasto <= 0) {
+    if (isNaN(valor) || valor <= 0) {
         valorFeedback.className = 'form-text text-danger';
         valorFeedback.textContent = 'Insira um valor válido maior que 0.';
         hasError = true;
@@ -378,257 +358,125 @@ function salvarGasto() {
 
     if (hasError) return;
 
-    const novoGasto = {
-        tipo: tipoGasto,
-        valor: valorGasto,
+    const novoRegistro = {
+        tipo,
+        descricao,
+        valor,
         data: new Date().toISOString()
     };
 
     try {
         limparDadosAntigos();
-        let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-        gastos.push(novoGasto);
-        if (gastos.length > MAX_REGISTROS) gastos = gastos.slice(-MAX_REGISTROS);
-        if (checkStorageAvailability({ gastos })) {
-            localStorage.setItem('gastos', compressData(gastos));
-            tipoGastoInput.value = '';
-            valorGastoInput.value = '';
-            tipoFeedback.className = 'form-text text-success';
-            tipoFeedback.textContent = 'Gasto salvo com sucesso!';
-            showToast('Gasto registrado!', 'success');
-            console.log('[financeiro.js] Gasto salvo:', novoGasto);
-            carregarGastos();
+        let registros = decompressData(localStorage.getItem('registros') || compressData([]));
+        registros.push(novoRegistro);
+        if (registros.length > MAX_REGISTROS) registros = registros.slice(-MAX_REGISTROS);
+        if (checkStorageAvailability({ registros })) {
+            localStorage.setItem('registros', compressData(registros));
+            tipoRegistroSelect.value = 'gasto';
+            descricaoInput.value = '';
+            valorInput.value = '';
+            descricaoFeedback.className = 'form-text text-success';
+            descricaoFeedback.textContent = 'Registro salvo com sucesso!';
+            showToast(`${tipo === 'gasto' ? 'Gasto' : 'Ganho'} registrado!`, 'success');
+            console.log('[financeiro.js] Registro salvo:', novoRegistro);
+            carregarRegistros();
         } else {
             throw new Error('Espaço insuficiente no localStorage.');
         }
     } catch (e) {
-        tipoFeedback.className = 'form-text text-danger';
-        tipoFeedback.textContent = 'Erro ao salvar gasto. O armazenamento está cheio. Considere limpar os dados financeiros.';
-        showToast('Erro ao salvar gasto. Armazenamento cheio.', 'error');
-        console.error('[financeiro.js] Erro ao salvar gasto:', e);
+        descricaoFeedback.className = 'form-text text-danger';
+        descricaoFeedback.textContent = 'Erro ao salvar registro. O armazenamento está cheio. Considere limpar os dados financeiros.';
+        showToast('Erro ao salvar registro. Armazenamento cheio.', 'error');
+        console.error('[financeiro.js] Erro ao salvar registro:', e);
     }
 }
 
-// Carrega e exibe os gastos
-function carregarGastos() {
-    const listaGastos = document.getElementById('listaGastos');
+function carregarRegistros() {
+    const listaRegistros = document.getElementById('listaRegistros');
     const totalGastos = document.getElementById('totalGastos');
-
-    if (!listaGastos || !totalGastos) {
-        console.error('[financeiro.js] Elementos #listaGastos ou #totalGastos não encontrados.');
-        return;
-    }
-
-    try {
-        const gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-        listaGastos.innerHTML = '';
-        let total = 0;
-
-        gastos.forEach((gasto, index) => {
-            const dataFormatada = new Date(gasto.data).toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `
-                ${gasto.tipo}: R$ ${gasto.valor.toFixed(2)} <small class="text-muted">(${dataFormatada})</small>
-                <button class="btn btn-danger btn-sm" onclick="removerGasto(${index})" aria-label="Remover gasto">×</button>
-            `;
-            listaGastos.appendChild(li);
-            total += gasto.valor;
-        });
-
-        totalGastos.textContent = total.toFixed(2);
-        console.log('[financeiro.js] Gastos carregados:', gastos.length, 'Total: R$', total.toFixed(2));
-    } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar gastos:', e);
-        listaGastos.innerHTML = '<li class="list-group-item text-danger">Erro ao carregar gastos.</li>';
-        totalGastos.textContent = '0.00';
-    }
-}
-
-// Remove um gasto
-function removerGasto(index) {
-    if (!confirm('Deseja remover este gasto?')) return;
-
-    try {
-        let gastos = decompressData(localStorage.getItem('gastos') || compressData([]));
-        gastos.splice(index, 1);
-        if (checkStorageAvailability({ gastos })) {
-            localStorage.setItem('gastos', compressData(gastos));
-            showToast('Gasto removido!', 'success');
-            console.log('[financeiro.js] Gasto removido no índice:', index);
-            carregarGastos();
-        } else {
-            throw new Error('Espaço insuficiente no localStorage.');
-        }
-    } catch (e) {
-        showToast('Erro ao remover gasto. Armazenamento cheio.', 'error');
-        console.error('[financeiro.js] Erro ao remover gasto:', e);
-    }
-}
-
-// Salva um novo ganho
-function salvarGanho() {
-    const plataformaInput = document.getElementById('plataformaGanho');
-    const kmRodadoInput = document.getElementById('kmRodadoGanho');
-    const valorGanhoInput = document.getElementById('valorGanho');
-    const plataformaFeedback = document.getElementById('plataformaGanhoFeedback');
-    const kmFeedback = document.getElementById('kmRodadoGanhoFeedback');
-    const valorFeedback = document.getElementById('valorGanhoFeedback');
-
-    if (!plataformaInput || !kmRodadoInput || !valorGanhoInput || !plataformaFeedback || !kmFeedback || !valorFeedback) {
-        console.error('[financeiro.js] Elementos de ganho não encontrados.');
-        return;
-    }
-
-    const plataforma = plataformaInput.value.trim();
-    const kmRodado = parseFloat(kmRodadoInput.value) || 0;
-    const valorGanho = parseFloat(valorGanhoInput.value);
-
-    plataformaFeedback.textContent = '';
-    kmFeedback.textContent = '';
-    valorFeedback.textContent = '';
-
-    let hasError = false;
-    if (!plataforma) {
-        plataformaFeedback.className = 'form-text text-danger';
-        plataformaFeedback.textContent = 'Insira a plataforma.';
-        hasError = true;
-    } else if (plataforma.length > 50) {
-        plataformaFeedback.className = 'form-text text-danger';
-        plataformaFeedback.textContent = 'A plataforma deve ter até 50 caracteres.';
-        hasError = true;
-    }
-    if (kmRodado < 0) {
-        kmFeedback.className = 'form-text text-danger';
-        kmFeedback.textContent = 'Km rodado não pode ser negativo.';
-        hasError = true;
-    }
-    if (isNaN(valorGanho) || valorGanho <= 0) {
-        valorFeedback.className = 'form-text text-danger';
-        valorFeedback.textContent = 'Insira um valor válido maior que 0.';
-        hasError = true;
-    }
-
-    if (hasError) return;
-
-    const novoGanho = {
-        plataforma,
-        kmRodado,
-        valor: valorGanho,
-        data: new Date().toISOString()
-    };
-
-    try {
-        limparDadosAntigos();
-        let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
-        ganhos.push(novoGanho);
-        if (ganhos.length > MAX_REGISTROS) ganhos = ganhos.slice(-MAX_REGISTROS);
-        if (checkStorageAvailability({ ganhos })) {
-            localStorage.setItem('ganhos', compressData(ganhos));
-            plataformaInput.value = '';
-            kmRodadoInput.value = '';
-            valorGanhoInput.value = '';
-            plataformaFeedback.className = 'form-text text-success';
-            plataformaFeedback.textContent = 'Ganho salvo com sucesso!';
-            showToast('Ganho registrado!', 'success');
-            console.log('[financeiro.js] Ganho salvo:', novoGanho);
-            carregarGanhos();
-        } else {
-            throw new Error('Espaço insuficiente no localStorage.');
-        }
-    } catch (e) {
-        plataformaFeedback.className = 'form-text text-danger';
-        plataformaFeedback.textContent = 'Erro ao salvar ganho. O armazenamento está cheio. Considere limpar os dados financeiros.';
-        showToast('Erro ao salvar ganho. Armazenamento cheio.', 'error');
-        console.error('[financeiro.js] Erro ao salvar ganho:', e);
-    }
-}
-
-// Carrega e exibe os ganhos
-function carregarGanhos() {
-    const listaGanhos = document.getElementById('listaGanhos');
     const totalGanhos = document.getElementById('totalGanhos');
+    const saldoTotal = document.getElementById('saldoTotal');
     const semanaConsulta = document.getElementById('semanaConsulta');
 
-    if (!listaGanhos || !totalGanhos || !semanaConsulta) {
-        console.error('[financeiro.js] Elementos #listaGanhos, #totalGanhos ou #semanaConsulta não encontrados.');
+    if (!listaRegistros || !totalGastos || !totalGanhos || !saldoTotal || !semanaConsulta) {
+        console.error('[financeiro.js] Elementos #listaRegistros, #totalGastos, #totalGanhos, #saldoTotal ou #semanaConsulta não encontrados.');
         return;
     }
 
     try {
-        const ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
+        const registros = decompressData(localStorage.getItem('registros') || compressData([]));
         const semanaSelecionada = semanaConsulta.value;
-        let ganhosFiltrados = ganhos;
+        let registrosFiltrados = registros;
 
         if (semanaSelecionada) {
             const [ano, semana] = semanaSelecionada.split('-').map(Number);
-            ganhosFiltrados = ganhos.filter(ganho => {
-                const data = new Date(ganho.data);
-                const anoGanho = data.getFullYear();
-                const semanaGanho = getWeekNumber(data);
-                return anoGanho === ano && semanaGanho === semana;
+            registrosFiltrados = registros.filter(registro => {
+                const data = new Date(registro.data);
+                const anoRegistro = data.getFullYear();
+                const semanaRegistro = getWeekNumber(data);
+                return anoRegistro === ano && semanaRegistro === semana;
             });
         }
 
-        listaGanhos.innerHTML = '';
-        let total = 0;
+        listaRegistros.innerHTML = '';
+        let totalGastosValue = 0;
+        let totalGanhosValue = 0;
 
-        ganhosFiltrados.forEach((ganho, index) => {
-            const dataFormatada = new Date(ganho.data).toLocaleString('pt-BR', {
+        registrosFiltrados.forEach((registro, index) => {
+            const dataFormatada = new Date(registro.data).toLocaleString('pt-BR', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            const kmInfo = ganho.kmRodado > 0 ? `, ${ganho.kmRodado.toFixed(1)} km` : '';
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.className = `list-group-item ${registro.tipo === 'gasto' ? 'gasto' : 'ganho'}`;
             li.innerHTML = `
-                ${ganho.plataforma}: R$ ${ganho.valor.toFixed(2)}${kmInfo} <small class="text-muted">(${dataFormatada})</small>
-                <button class="btn btn-danger btn-sm" onclick="removerGanho(${index})" aria-label="Remover ganho">×</button>
+                ${registro.descricao}: R$ ${registro.valor.toFixed(2)} <small class="text-muted">(${dataFormatada})</small>
+                <button class="btn btn-danger btn-sm" onclick="removerRegistro(${index})" aria-label="Remover registro">×</button>
             `;
-            listaGanhos.appendChild(li);
-            total += ganho.valor;
+            listaRegistros.appendChild(li);
+            if (registro.tipo === 'gasto') {
+                totalGastosValue += registro.valor;
+            } else {
+                totalGanhosValue += registro.valor;
+            }
         });
 
-        totalGanhos.textContent = total.toFixed(2);
-        console.log('[financeiro.js] Ganhos carregados:', ganhosFiltrados.length, 'Total: R$', total.toFixed(2));
+        totalGastos.textContent = totalGastosValue.toFixed(2);
+        totalGanhos.textContent = totalGanhosValue.toFixed(2);
+        saldoTotal.textContent = (totalGanhosValue - totalGastosValue).toFixed(2);
+        console.log('[financeiro.js] Registros carregados:', registrosFiltrados.length, 'Total Gastos: R$', totalGastosValue.toFixed(2), 'Total Ganhos: R$', totalGanhosValue.toFixed(2), 'Saldo: R$', (totalGanhosValue - totalGastosValue).toFixed(2));
     } catch (e) {
-        console.error('[financeiro.js] Erro ao carregar ganhos:', e);
-        listaGanhos.innerHTML = '<li class="list-group-item text-danger">Erro ao carregar ganhos.</li>';
+        console.error('[financeiro.js] Erro ao carregar registros:', e);
+        listaRegistros.innerHTML = '<li class="list-group-item text-danger">Erro ao carregar registros.</li>';
+        totalGastos.textContent = '0.00';
         totalGanhos.textContent = '0.00';
+        saldoTotal.textContent = '0.00';
     }
 }
 
-// Remove um ganho
-function removerGanho(index) {
-    if (!confirm('Deseja remover este ganho?')) return;
+function removerRegistro(index) {
+    if (!confirm('Deseja remover este registro?')) return;
 
     try {
-        let ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
-        ganhos.splice(index, 1);
-        if (checkStorageAvailability({ ganhos })) {
-            localStorage.setItem('ganhos', compressData(ganhos));
-            showToast('Ganho removido!', 'success');
-            console.log('[financeiro.js] Ganho removido no índice:', index);
-            carregarGanhos();
+        let registros = decompressData(localStorage.getItem('registros') || compressData([]));
+        registros.splice(index, 1);
+        if (checkStorageAvailability({ registros })) {
+            localStorage.setItem('registros', compressData(registros));
+            showToast('Registro removido!', 'success');
+            console.log('[financeiro.js] Registro removido no índice:', index);
+            carregarRegistros();
         } else {
             throw new Error('Espaço insuficiente no localStorage.');
         }
     } catch (e) {
-        showToast('Erro ao remover ganho. Armazenamento cheio.', 'error');
-        console.error('[financeiro.js] Erro ao remover ganho:', e);
+        showToast('Erro ao remover registro. Armazenamento cheio.', 'error');
+        console.error('[financeiro.js] Erro ao remover registro:', e);
     }
 }
 
-// Atualiza as semanas disponíveis no filtro
 function atualizarSemanas() {
     const semanaConsulta = document.getElementById('semanaConsulta');
     if (!semanaConsulta) {
@@ -637,10 +485,10 @@ function atualizarSemanas() {
     }
 
     try {
-        const ganhos = decompressData(localStorage.getItem('ganhos') || compressData([]));
+        const registros = decompressData(localStorage.getItem('registros') || compressData([]));
         const semanas = new Set();
-        ganhos.forEach(ganho => {
-            const data = new Date(ganho.data);
+        registros.forEach(registro => {
+            const data = new Date(registro.data);
             const ano = data.getFullYear();
             const semana = getWeekNumber(data);
             semanas.add(`${ano}-${semana}`);
@@ -660,13 +508,4 @@ function atualizarSemanas() {
         console.error('[financeiro.js] Erro ao atualizar semanas:', e);
         semanaConsulta.innerHTML = '<option value="">Erro ao carregar semanas</option>';
     }
-}
-
-// Obtém o número da semana do ano
-function getWeekNumber(d) {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    return weekNo;
 }

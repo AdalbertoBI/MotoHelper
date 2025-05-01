@@ -52,7 +52,6 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="img/icon-192x192.png" type="image/png">
     <style>
-        /* Estilo para o prompt de instalação */
         .install-prompt {
             display: none;
             position: fixed;
@@ -180,58 +179,47 @@
                     <input type="number" id="kmPorLitro" class="form-control" placeholder="Ex: 35.50" min="0" step="0.01" pattern="^\d*\.?\d{0,2}$" aria-describedby="kmPorLitroFeedback">
                     <div id="kmPorLitroFeedback" class="form-text" style="display: none;" aria-live="polite"></div>
                 </div>
-                <div class="form-group mt-2">
+                <div class="form-group">
                     <label for="precoPorLitro">Preço do Combustível (R$/litro):</label>
                     <input type="number" id="precoPorLitro" class="form-control" placeholder="Ex: 5.89" min="0" step="0.01" pattern="^\d*\.?\d{0,2}$" aria-describedby="precoPorLitroFeedback">
                     <div id="precoPorLitroFeedback" class="form-text" style="display: none;" aria-live="polite"></div>
                 </div>
             </div>
 
-            <div class="gastos-section mt-3">
-                <h3>Adicionar Novo Gasto</h3>
-                <div class="form-group">
-                    <label for="tipoGasto">Tipo de Gasto:</label>
-                    <input type="text" id="tipoGasto" class="form-control" placeholder="Ex: Combustível, Manutenção, Lanche" aria-describedby="tipoGastoFeedback">
-                    <div id="tipoGastoFeedback" class="form-text" style="display: none;"></div>
-                </div>
-                <div class="form-group">
-                    <label for="valorGasto">Valor (R$):</label>
-                    <input type="number" id="valorGasto" class="form-control" placeholder="Ex: 50.00" min="0" step="0.01" aria-describedby="valorGastoFeedback">
-                    <div id="valorGastoFeedback" class="form-text" style="display: none;"></div>
-                </div>
-                <button type="button" id="btnSalvarGasto" class="btn btn-primary" aria-label="Adicionar gasto">Adicionar Gasto</button>
-                <h4 class="mt-3">Gastos Registrados</h4>
-                <ul id="listaGastos" class="list-group"></ul>
-                <p class="mt-2">Total de Gastos: R$ <span id="totalGastos">0.00</span></p>
-            </div>
-
-            <div class="ganhos-section mt-3">
-                <h3>Adicionar Novo Ganho</h3>
-                <div class="form-group">
-                    <label for="plataformaGanho">Plataforma:</label>
-                    <input type="text" id="plataformaGanho" class="form-control" placeholder="Ex: iFood, Uber, Rappi" aria-describedby="plataformaGanhoFeedback">
-                    <div id="plataformaGanhoFeedback" class="form-text" style="display: none;"></div>
-                </div>
-                <div class="form-group">
-                    <label for="kmRodadoGanho">Km Rodado:</label>
-                    <input type="number" id="kmRodadoGanho" class="form-control" placeholder="Ex: 10.5" min="0" step="0.1" aria-describedby="kmRodadoGanhoFeedback">
-                    <div id="kmRodadoGanhoFeedback" class="form-text" style="display: none;"></div>
-                </div>
-                <div class="form-group">
-                    <label for="valorGanho">Valor (R$):</label>
-                    <input type="number" id="valorGanho" class="form-control" placeholder="Ex: 25.00" min="0" step="0.01" aria-describedby="valorGanhoFeedback">
-                    <div id="valorGanhoFeedback" class="form-text" style="display: none;"></div>
-                </div>
-                <button type="button" id="btnSalvarGanho" class="btn btn-primary" aria-label="Adicionar ganho">Adicionar Ganho</button>
-                <h4 class="mt-3">Ganhos Registrados</h4>
+            <div class="finance-section mt-3">
                 <div class="form-group">
                     <label for="semanaConsulta">Filtrar por Semana:</label>
-                    <select id="semanaConsulta" class="form-control" aria-label="Selecionar semana para filtro de ganhos">
+                    <select id="semanaConsulta" class="form-control" aria-label="Selecionar semana para filtro de financeiro">
                         <option value="">Semana Atual</option>
                     </select>
                 </div>
-                <ul id="listaGanhos" class="list-group"></ul>
+                <p class="mt-2">Total de Gastos: R$ <span id="totalGastos">0.00</span></p>
                 <p class="mt-2">Total de Ganhos: R$ <span id="totalGanhos">0.00</span></p>
+                <p class="mt-2">Saldo Total: R$ <span id="saldoTotal">0.00</span></p>
+
+                <h3>Adicionar Registro</h3>
+                <div class="form-group">
+                    <label for="tipoRegistro">Tipo de Registro:</label>
+                    <select id="tipoRegistro" class="form-control" aria-describedby="tipoRegistroFeedback">
+                        <option value="gasto">Gasto</option>
+                        <option value="ganho">Ganho</option>
+                    </select>
+                    <div id="tipoRegistroFeedback" class="form-text" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label for="descricaoRegistro">Descrição:</label>
+                    <input type="text" id="descricaoRegistro" class="form-control" placeholder="Ex: Combustível, iFood" aria-describedby="descricaoRegistroFeedback">
+                    <div id="descricaoRegistroFeedback" class="form-text" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label for="valorRegistro">Valor (R$):</label>
+                    <input type="number" id="valorRegistro" class="form-control" placeholder="Ex: 50.00" min="0" step="0.01" aria-describedby="valorRegistroFeedback">
+                    <div id="valorRegistroFeedback" class="form-text" style="display: none;"></div>
+                </div>
+                <button type="button" id="btnSalvarRegistro" class="btn btn-primary" aria-label="Adicionar registro">Adicionar Registro</button>
+
+                <h4 class="mt-3">Registros</h4>
+                <ul id="listaRegistros" class="list-group"></ul>
             </div>
 
             <div class="mt-3 text-muted text-center">
@@ -275,22 +263,18 @@
             evt.currentTarget.classList.add('active');
             evt.currentTarget.setAttribute('aria-selected', 'true');
 
-            // Redimensiona o mapa ao exibir a aba "Rotas"
             if (tabName === 'Rotas' && typeof map !== 'undefined' && map) {
                 setTimeout(() => {
                     map.invalidateSize();
                     console.log('[mapa.js] Mapa redimensionado após exibição da aba Rotas.');
                 }, 300);
             } else if (tabName === 'Rotas') {
-                // Inicializa o mapa se ainda não foi inicializado
                 observarMapa();
             }
         }
     }
 
-    // Registro do Service Worker com verificação de protocolo
     if ('serviceWorker' in navigator) {
-        // Verifica se o protocolo é http ou https
         if (location.protocol === 'http:' || location.protocol === 'https:') {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/MotocaBR/sw.js')
@@ -308,27 +292,20 @@
         console.warn('Service Workers não são suportados neste navegador.');
     }
 
-    // Verificação de instalação e prompt para instalar o PWA
     let deferredPrompt;
     const installPrompt = document.getElementById('installPrompt');
     const installYes = document.getElementById('installYes');
     const installNo = document.getElementById('installNo');
 
-    // Verifica se o app já está rodando em modo standalone
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 
     if (!isStandalone) {
-        // Escuta o evento beforeinstallprompt
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Impede que o navegador mostre o prompt padrão
             e.preventDefault();
-            // Armazena o evento para uso posterior
             deferredPrompt = e;
-            // Exibe o prompt personalizado
             installPrompt.style.display = 'block';
         });
 
-        // Quando o usuário clicar em "Sim"
         installYes.addEventListener('click', () => {
             installPrompt.style.display = 'none';
             if (deferredPrompt) {
@@ -344,14 +321,12 @@
             }
         });
 
-        // Quando o usuário clicar em "Não"
         installNo.addEventListener('click', () => {
             installPrompt.style.display = 'none';
             deferredPrompt = null;
         });
     }
 
-    // Adiciona suporte básico a gestos (exemplo: voltar ao arrastar para a esquerda)
     let touchStartX = 0;
     let touchEndX = 0;
 
@@ -365,13 +340,11 @@
     });
 
     function handleSwipe() {
-        const swipeThreshold = 100; // Distância mínima para considerar um swipe
+        const swipeThreshold = 100;
         if (touchStartX - touchEndX > swipeThreshold) {
-            // Swipe para a esquerda (pode ser usado para "voltar", se aplicável)
             console.log('Swipe para a esquerda detectado');
-            // Implementar lógica de navegação, se necessário
         }
     }
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9392746fb9e56feb',t:'MTc0NjEzNTgxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
