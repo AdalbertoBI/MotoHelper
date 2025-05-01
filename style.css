@@ -253,19 +253,23 @@ h1 {
     padding: 15px;
 }
 
-.config-section .form-group {
+.form-row {
     display: flex;
     gap: 15px;
-    align-items: center;
+    flex-wrap: wrap;
 }
 
-.config-section .form-group label {
-    margin-bottom: 0;
-    min-width: 150px;
-}
-
-.config-section .form-group .form-control {
+.form-row .form-group {
     flex: 1;
+    min-width: 200px;
+    margin-bottom: 10px;
+}
+
+.form-row .form-group label {
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .button-group {
@@ -350,13 +354,13 @@ h1 {
         height: 300px;
     }
 
-    .config-section .form-group {
+    .form-row {
         flex-direction: column;
         gap: 10px;
     }
 
-    .config-section .form-group label {
-        min-width: auto;
+    .form-row .form-group {
+        min-width: 100%;
     }
 }
 
