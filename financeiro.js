@@ -110,7 +110,6 @@ function isIncognito() {
 }
 
 // Exibe notificação toast
-// Exibe notificação toast
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -181,16 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarGanhos();
     configurarEventos();
     atualizarSemanas();
-
-    // Adicionar botão para limpar tudo
-    const financeiroTab = document.getElementById('Financeiro');
-    if (financeiroTab) {
-        const clearButton = document.createElement('button');
-        clearButton.textContent = 'Limpar Tudo';
-        clearButton.className = 'btn btn-danger mt-3';
-        clearButton.onclick = limparFinanceiro;
-        financeiroTab.appendChild(clearButton);
-    }
 });
 
 // Configura eventos dos botões e inputs
@@ -350,33 +339,6 @@ function salvarPrecoPorLitro() {
         precoPorLitroInput.classList.remove('saved');
         showToast('Erro ao salvar preço. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao salvar precoPorLitro:', e);
-    }
-}
-
-// Limpa todos os dados financeiros
-function limparFinanceiro() {
-    if (!confirm('Tem certeza que deseja limpar todos os dados financeiros? Esta ação não pode ser desfeita.')) {
-        return;
-    }
-
-    try {
-        localStorage.removeItem('kmPorLitro');
-        localStorage.removeItem('precoPorLitro');
-        localStorage.removeItem('gastos');
-        localStorage.removeItem('ganhos');
-
-        document.getElementById('kmPorLitro').value = '';
-        document.getElementById('precoPorLitro').value = '';
-        document.getElementById('listaGastos').innerHTML = '';
-        document.getElementById('listaGanhos').innerHTML = '';
-        document.getElementById('totalGastos').textContent = '0.00';
-        document.getElementById('totalGanhos').textContent = '0.00';
-
-        showToast('Dados financeiros limpos com sucesso!', 'success');
-        console.log('[financeiro.js] Todos os dados financeiros foram limpos.');
-    } catch (e) {
-        showToast('Erro ao limpar dados financeiros.', 'error');
-        console.error('[financeiro.js] Erro ao limpar financeiro:', e);
     }
 }
 
