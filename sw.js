@@ -1,11 +1,12 @@
-const CACHE_NAME = 'motocabr-cache-v1';
+const CACHE_NAME = 'motocabr-cache-v2';
 const urlsToCache = [
-    '/MotocaBR/', // ou '/MotocaBR/index.html'
-    '/MotocaBR/style.css',
-    '/MotocaBR/script.js',
-    '/MotocaBR/mapa.js',
-    '/MotocaBR/frete.js',
-    '/MotocaBR/Financeiro.js'
+    '/',
+    '/index.html',
+    '/style.css',
+    '/script.js',
+    '/mapa.js',
+    '/frete.js',
+    '/financeiro.js'
 ];
 
 // Instala o Service Worker e armazena arquivos em cache
@@ -49,7 +50,13 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                return response || fetch(event.request);
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request).catch(() => {
+                    // Fallback para quando a requisição falhar (offline)
+                    return caches.match('/index.html');
+                });
             })
     );
 });

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="img/icon-192x192.png" type="image/png">
 </head>
 <body>
     <div class="container">
@@ -180,45 +181,44 @@
     <script src="financeiro.js"></script>
     <script>
     function openTab(evt, tabName) {
-    const tabcontent = document.getElementsByClassName('tabcontent');
-    for (let i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = 'none';
-        tabcontent[i].classList.remove('active');
-    }
-    const tablinks = document.getElementsByClassName('tablink');
-    for (let i = 0; i < tablinks.length; i++) {
-        tablinks[i].classList.remove('active');
-        tablinks[i].setAttribute('aria-selected', 'false');
-    }
-    const currentTab = document.getElementById(tabName);
-    if (currentTab) {
-        currentTab.style.display = 'block';
-        currentTab.classList.add('active');
-        evt.currentTarget.classList.add('active');
-        evt.currentTarget.setAttribute('aria-selected', 'true');
+        const tabcontent = document.getElementsByClassName('tabcontent');
+        for (let i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = 'none';
+            tabcontent[i].classList.remove('active');
+        }
+        const tablinks = document.getElementsByClassName('tablink');
+        for (let i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove('active');
+            tablinks[i].setAttribute('aria-selected', 'false');
+        }
+        const currentTab = document.getElementById(tabName);
+        if (currentTab) {
+            currentTab.style.display = 'block';
+            currentTab.classList.add('active');
+            evt.currentTarget.classList.add('active');
+            evt.currentTarget.setAttribute('aria-selected', 'true');
 
-        // Redimensiona o mapa ao exibir a aba "Rotas"
-        if (tabName === 'Rotas' && typeof map !== 'undefined' && map) {
-            setTimeout(() => {
-                map.invalidateSize();
-                console.log('[mapa.js] Mapa redimensionado após exibição da aba Rotas.');
-            }, 300);
-        } else if (tabName === 'Rotas') {
-            // Inicializa o mapa se ainda não foi inicializado
-            observarMapa();
+            // Redimensiona o mapa ao exibir a aba "Rotas"
+            if (tabName === 'Rotas' && typeof map !== 'undefined' && map) {
+                setTimeout(() => {
+                    map.invalidateSize();
+                    console.log('[mapa.js] Mapa redimensionado após exibição da aba Rotas.');
+                }, 300);
+            } else if (tabName === 'Rotas') {
+                // Inicializa o mapa se ainda não foi inicializado
+                observarMapa();
+            }
         }
     }
-}
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/MotocaBR/sw.js').then(reg => {
-            console.log('Service Worker registrado com sucesso:', reg);
-        }).catch(err => {
-            console.error('Erro ao registrar Service Worker:', err);
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('Service Worker registrado com sucesso:', reg);
+            }).catch(err => {
+                console.error('Erro ao registrar Service Worker:', err);
+            });
         });
-    });
-}
-
+    }
     </script>
 </body>
 </html>
