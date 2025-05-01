@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motocabr-cache-v2';
+const CACHE_NAME = 'motocabr-cache-v3'; // Alterado para v3 para forçar atualização
 const urlsToCache = [
     '/',
     '/index.html',
@@ -11,6 +11,7 @@ const urlsToCache = [
 
 // Instala o Service Worker e armazena arquivos em cache
 self.addEventListener('install', event => {
+    self.skipWaiting(); // Força o Service Worker a ativar imediatamente
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
