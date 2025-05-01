@@ -1,11 +1,11 @@
 const CACHE_NAME = 'motocabr-cache-v1';
 const urlsToCache = [
-    './', // ou './index.html'
-    './style.css',
-    './script.js',
-    './mapa.js',
-    './frete.js',
-    './Financeiro.js'
+    '/MotocaBR/', // ou '/MotocaBR/index.html'
+    '/MotocaBR/style.css',
+    '/MotocaBR/script.js',
+    '/MotocaBR/mapa.js',
+    '/MotocaBR/frete.js',
+    '/MotocaBR/Financeiro.js'
 ];
 
 // Instala o Service Worker e armazena arquivos em cache
