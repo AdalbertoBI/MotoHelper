@@ -1,105 +1,74 @@
-const CACHE_NAME = 'motoca-br-cache-v2';
+const CACHE_NAME = 'motoca-br-v4';
 const urlsToCache = [
     '/',
     '/index.html',
     '/style.css',
+    '/manifest.json',
     '/script.js',
-    '/financeiro.js',
     '/mapa.js',
     '/frete.js',
-    '/pesquisa.js',
-    '/sos.js',
-    '/manifest.json',
+    '/financeiro.js',
     '/img/icon-192x192.png',
-    '/img/icon-512x512.png'
+    '/img/icon-512x512.png',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
-// Modo de depuração (desativar em produção)
-const DEBUG = false;
-const log = (...args) => { if (DEBUG) console.log(...args); };
-const errorLog = console.error.bind(console);
-
-// Evento de instalação
 self.addEventListener('install', event => {
-    log('[sw.js] Instalando Service Worker...');
+    console.log('[sw.js] Service Worker: Instalando...');
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                log('[sw.js] Cache aberto, armazenando arquivos...');
-                return cache.addAll(urlsToCache)
-                    .catch(error => {
-                        errorLog('[sw.js] Falha ao armazenar em cache:', error);
-                    });
-            })
-            .then(() => {
-                log('[sw.js] Service Worker instalado com sucesso.');
-                return self.skipWaiting();
-            })
+        caches.open(CACHE_NAME).then(cache => {
+            console.log('[sw.js] Cache aberto, adicionando arquivos...');
+            return cache.addAll(urlsToCache).catch(err => {
+                console.error('[sw.js] Erro ao adicionar arquivos ao cache:', err);
+            });
+        })
     );
+    self.skipWaiting();
 });
 
-// Evento de ativação
 self.addEventListener('activate', event => {
-    log('[sw.js] Ativando Service Worker...');
+    console.log('[sw.js] Service Worker: Ativando...');
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cache => {
                     if (cache !== CACHE_NAME) {
-                        log('[sw.js] Removendo cache antigo:', cache);
+                        console.log('[sw.js] Deletando cache antigo:', cache);
                         return caches.delete(cache);
                     }
                 })
             );
         }).then(() => {
-            log('[sw.js] Service Worker ativado.');
+            console.log('[sw.js] Cache antigo limpo.');
             return self.clients.claim();
         })
     );
 });
 
-// Evento de fetch
 self.addEventListener('fetch', event => {
-    const url = new URL(event.request.url);
-    const isSameOrigin = url.origin === self.location.origin;
-
+    console.log('[sw.js] Fetch:', event.request.url);
     event.respondWith(
-        // Priorizar cache (offline-first)
-        caches.match(event.request)
-            .then(cachedResponse => {
-                if (cachedResponse) {
-                    log('[sw.js] Servindo do cache:', url.pathname);
-                    return cachedResponse;
+        caches.match(event.request).then(response => {
+            if (response) {
+                console.log('[sw.js] Servindo do cache:', event.request.url);
+                return response;
+            }
+            console.log('[sw.js] Buscando na rede:', event.request.url);
+            return fetch(event.request).then(networkResponse => {
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                    return networkResponse;
                 }
-
-                log('[sw.js] Buscando na rede:', url.pathname);
-                return fetch(event.request)
-                    .then(networkResponse => {
-                        // Verificar se a resposta é válida para cache
-                        if (!networkResponse || networkResponse.status !== 200) {
-                            return networkResponse;
-                        }
-
-                        // Cache dinâmico para recursos válidos (mesmo de terceiros)
-                        const responseToCache = networkResponse.clone();
-                        caches.open(CACHE_NAME)
-                            .then(cache => {
-                                cache.put(event.request, responseToCache);
-                                log('[sw.js] Armazenado no cache:', url.pathname);
-                            })
-                            .catch(error => {
-                                errorLog('[sw.js] Erro ao armazenar no cache:', error);
-                            });
-
-                        return networkResponse;
-                    })
-                    .catch(error => {
-                        errorLog('[sw.js] Erro na requisição:', url.pathname, error);
-                        return new Response('Erro de rede. Verifique sua conexão.', {
-                            status: 503,
-                            statusText: 'Service Unavailable'
-                        });
-                    });
-            })
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseToCache);
+                    console.log('[sw.js] Armazenado no cache:', event.request.url);
+                });
+                return networkResponse;
+            }).catch(err => {
+                console.error('[sw.js] Erro na busca:', err);
+                return caches.match('/index.html');
+            });
+        })
     );
 });

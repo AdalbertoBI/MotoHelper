@@ -68,13 +68,10 @@ body {
     position: relative;
 }
 
-h1, h2, h3, h4 {
-    color: var(--text-color);
-    margin-bottom: 20px;
-}
-
 h1 {
     text-align: center;
+    color: var(--text-color);
+    margin-bottom: 20px;
 }
 
 .tabs {
@@ -326,7 +323,18 @@ h1 {
         padding: 8px 12px;
     }
 
-    #map, #mapPesquisa {
+    #map {
         height: 300px;
     }
+}
+
+/* Ajuste para 3 abas */
+.tabs {
+    display: flex;
+    justify-content: space-between;
+}
+
+.tablink {
+    flex: 1;
+    max-width: 33.33%; /* Ajusta para 3 abas */
 }
