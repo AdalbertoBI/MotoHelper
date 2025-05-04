@@ -194,11 +194,18 @@ function configurarEventos() {
         console.warn('[financeiro.js] Input #precoPorLitro não encontrado.');
     }
 
-    const btnSalvarRegistro = document.getElementById('btnSalvarRegistro');
-    if (btnSalvarRegistro) {
-        btnSalvarRegistro.addEventListener('click', salvarRegistro);
+    const btnSalvarGanho = document.getElementById('btnSalvarGanho');
+    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
+    if (btnSalvarGanho) {
+        btnSalvarGanho.addEventListener('click', () => salvarRegistro('ganho'));
     } else {
-        console.warn('[financeiro.js] Botão #btnSalvarRegistro não encontrado.');
+        console.warn('[financeiro.js] Botão #btnSalvarGanho não encontrado.');
+    }
+
+    if (btnSalvarGasto) {
+        btnSalvarGasto.addEventListener('click', () => salvarRegistro('gasto'));
+    } else {
+        console.warn('[financeiro.js] Botão #btnSalvarGasto não encontrado.');
     }
 
     if (semanaConsulta) {
@@ -319,24 +326,26 @@ function salvarPrecoPorLitro() {
     }
 }
 
-function salvarRegistro() {
-    const tipoRegistroSelect = document.getElementById('tipoRegistro');
+function salvarRegistro(tipo) {
+    const btnSalvarGanho = document.getElementById('btnSalvarGanho');
+    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
     const descricaoInput = document.getElementById('descricaoRegistro');
     const valorInput = document.getElementById('valorRegistro');
-    const tipoFeedback = document.getElementById('tipoRegistroFeedback');
     const descricaoFeedback = document.getElementById('descricaoRegistroFeedback');
     const valorFeedback = document.getElementById('valorRegistroFeedback');
 
-    if (!tipoRegistroSelect || !descricaoInput || !valorInput || !tipoFeedback || !descricaoFeedback || !valorFeedback) {
+    if (!descricaoInput || !valorInput || !descricaoFeedback || !valorFeedback) {
         console.error('[financeiro.js] Elementos de registro não encontrados.');
         return;
     }
 
-    const tipo = tipoRegistroSelect.value;
+    // Desabilitar botões para evitar múltiplos cliques
+    if (btnSalvarGanho) btnSalvarGanho.disabled = true;
+    if (btnSalvarGasto) btnSalvarGasto.disabled = true;
+
     const descricao = descricaoInput.value.trim();
     const valor = parseFloat(valorInput.value);
 
-    tipoFeedback.textContent = '';
     descricaoFeedback.textContent = '';
     valorFeedback.textContent = '';
 
@@ -356,7 +365,11 @@ function salvarRegistro() {
         hasError = true;
     }
 
-    if (hasError) return;
+    if (hasError) {
+        if (btnSalvarGanho) btnSalvarGanho.disabled = false;
+        if (btnSalvarGasto) btnSalvarGasto.disabled = false;
+        return;
+    }
 
     const novoRegistro = {
         tipo,
@@ -372,7 +385,6 @@ function salvarRegistro() {
         if (registros.length > MAX_REGISTROS) registros = registros.slice(-MAX_REGISTROS);
         if (checkStorageAvailability({ registros })) {
             localStorage.setItem('registros', compressData(registros));
-            tipoRegistroSelect.value = 'gasto';
             descricaoInput.value = '';
             valorInput.value = '';
             descricaoFeedback.className = 'form-text text-success';
@@ -388,6 +400,9 @@ function salvarRegistro() {
         descricaoFeedback.textContent = 'Erro ao salvar registro. O armazenamento está cheio. Considere limpar os dados financeiros.';
         showToast('Erro ao salvar registro. Armazenamento cheio.', 'error');
         console.error('[financeiro.js] Erro ao salvar registro:', e);
+    } finally {
+        if (btnSalvarGanho) btnSalvarGanho.disabled = false;
+        if (btnSalvarGasto) btnSalvarGasto.disabled = false;
     }
 }
 
@@ -418,36 +433,48 @@ function carregarRegistros() {
             });
         }
 
+        // Agrupar registros por descrição
+        const registrosAgrupados = {};
+        registrosFiltrados.forEach((registro, index) => {
+            const { descricao, tipo, valor } = registro;
+            if (!registrosAgrupados[descricao]) {
+                registrosAgrupados[descricao] = { gastos: 0, ganhos: 0, indices: [] };
+            }
+            if (tipo === 'gasto') {
+                registrosAgrupados[descricao].gastos += valor;
+            } else {
+                registrosAgrupados[descricao].ganhos += valor;
+            }
+            registrosAgrupados[descricao].indices.push(index);
+        });
+
         listaRegistros.innerHTML = '';
         let totalGastosValue = 0;
         let totalGanhosValue = 0;
 
-        registrosFiltrados.forEach((registro, index) => {
-            const dataFormatada = new Date(registro.data).toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+        Object.keys(registrosAgrupados).sort().forEach(descricao => {
+            const grupo = registrosAgrupados[descricao];
             const li = document.createElement('li');
-            li.className = `list-group-item ${registro.tipo === 'gasto' ? 'gasto' : 'ganho'}`;
-            li.innerHTML = `
-                ${registro.descricao}: R$ ${registro.valor.toFixed(2)} <small class="text-muted">(${dataFormatada})</small>
-                <button class="btn btn-danger btn-sm" onclick="removerRegistro(${index})" aria-label="Remover registro">×</button>
-            `;
-            listaRegistros.appendChild(li);
-            if (registro.tipo === 'gasto') {
-                totalGastosValue += registro.valor;
-            } else {
-                totalGanhosValue += registro.valor;
+            li.className = 'list-group-item';
+            let htmlContent = `<strong>${descricao}</strong><br>`;
+            if (grupo.ganhos > 0) {
+                htmlContent += `Ganhos: R$ ${grupo.ganhos.toFixed(2)}<br>`;
             }
+            if (grupo.gastos > 0) {
+                htmlContent += `Gastos: R$ ${grupo.gastos.toFixed(2)}<br>`;
+            }
+            htmlContent += `<button class="btn btn-danger btn-sm" onclick="removerRegistrosAgrupados('${descricao}')" aria-label="Remover todos os registros com descrição ${descricao}">×</button>`;
+            li.innerHTML = htmlContent;
+            listaRegistros.appendChild(li);
+
+            totalGastosValue += grupo.gastos;
+            totalGanhosValue += grupo.ganhos;
         });
 
         totalGastos.textContent = totalGastosValue.toFixed(2);
         totalGanhos.textContent = totalGanhosValue.toFixed(2);
         saldoTotal.textContent = (totalGanhosValue - totalGastosValue).toFixed(2);
-        console.log('[financeiro.js] Registros carregados:', registrosFiltrados.length, 'Total Gastos: R$', totalGastosValue.toFixed(2), 'Total Ganhos: R$', totalGanhosValue.toFixed(2), 'Saldo: R$', (totalGanhosValue - totalGastosValue).toFixed(2));
+        console.log('[financeiro.js] Registros agrupados carregados:', Object.keys(registrosAgrupados).length, 'Total Gastos: R$', totalGastosValue.toFixed(2), 'Total Ganhos: R$', totalGanhosValue.toFixed(2), 'Saldo: R$', (totalGanhosValue - totalGastosValue).toFixed(2));
     } catch (e) {
         console.error('[financeiro.js] Erro ao carregar registros:', e);
         listaRegistros.innerHTML = '<li class="list-group-item text-danger">Erro ao carregar registros.</li>';
@@ -457,23 +484,23 @@ function carregarRegistros() {
     }
 }
 
-function removerRegistro(index) {
-    if (!confirm('Deseja remover este registro?')) return;
+function removerRegistrosAgrupados(descricao) {
+    if (!confirm(`Deseja remover todos os registros com a descrição "${descricao}"?`)) return;
 
     try {
         let registros = decompressData(localStorage.getItem('registros') || compressData([]));
-        registros.splice(index, 1);
+        registros = registros.filter(registro => registro.descricao !== descricao);
         if (checkStorageAvailability({ registros })) {
             localStorage.setItem('registros', compressData(registros));
-            showToast('Registro removido!', 'success');
-            console.log('[financeiro.js] Registro removido no índice:', index);
+            showToast('Registros removidos!', 'success');
+            console.log('[financeiro.js] Registros com descrição removidos:', descricao);
             carregarRegistros();
         } else {
             throw new Error('Espaço insuficiente no localStorage.');
         }
     } catch (e) {
-        showToast('Erro ao remover registro. Armazenamento cheio.', 'error');
-        console.error('[financeiro.js] Erro ao remover registro:', e);
+        showToast('Erro ao remover registros. Armazenamento cheio.', 'error');
+        console.error('[financeiro.js] Erro ao remover registros agrupados:', e);
     }
 }
 

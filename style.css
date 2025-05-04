@@ -165,7 +165,13 @@ h1 {
     transition: background 0.3s, transform 0.2s;
 }
 
-.btn:hover {
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn:hover:not(:disabled) {
     transform: translateY(-2px);
 }
 
@@ -221,14 +227,6 @@ h1 {
 
 .list-group-item:hover {
     background: var(--input-bg);
-}
-
-.list-group-item.gasto {
-    border-left: 5px solid var(--btn-danger-bg);
-}
-
-.list-group-item.ganho {
-    border-left: 5px solid var(--btn-success-bg);
 }
 
 .loading {

@@ -201,14 +201,6 @@
 
                 <h3>Adicionar Registro</h3>
                 <div class="form-group">
-                    <label for="tipoRegistro">Tipo de Registro:</label>
-                    <select id="tipoRegistro" class="form-control" aria-describedby="tipoRegistroFeedback">
-                        <option value="gasto">Gasto</option>
-                        <option value="ganho">Ganho</option>
-                    </select>
-                    <div id="tipoRegistroFeedback" class="form-text" style="display: none;"></div>
-                </div>
-                <div class="form-group">
                     <label for="descricaoRegistro">Descrição:</label>
                     <input type="text" id="descricaoRegistro" class="form-control" placeholder="Ex: Combustível, iFood" aria-describedby="descricaoRegistroFeedback">
                     <div id="descricaoRegistroFeedback" class="form-text" style="display: none;"></div>
@@ -218,9 +210,12 @@
                     <input type="number" id="valorRegistro" class="form-control" placeholder="Ex: 50.00" min="0" step="0.01" aria-describedby="valorRegistroFeedback">
                     <div id="valorRegistroFeedback" class="form-text" style="display: none;"></div>
                 </div>
-                <button type="button" id="btnSalvarRegistro" class="btn btn-primary" aria-label="Adicionar registro">Adicionar Registro</button>
+                <div class="button-group">
+                    <button type="button" id="btnSalvarGanho" class="btn btn-success" aria-label="Adicionar registro de ganho">Adicionar Ganho</button>
+                    <button type="button" id="btnSalvarGasto" class="btn btn-danger" aria-label="Adicionar registro de gasto">Adicionar Gasto</button>
+                </div>
 
-                <h4 class="mt-3">Registros</h4>
+                <h4 class="mt-3">Registros Agrupados</h4>
                 <ul id="listaRegistros" class="list-group"></ul>
             </div>
 
@@ -348,5 +343,5 @@
         }
     }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9392746fb9e56feb',t:'MTc0NjEzNTgxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
