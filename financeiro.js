@@ -196,6 +196,7 @@ function configurarEventos() {
 
     const btnSalvarGanho = document.getElementById('btnSalvarGanho');
     const btnSalvarGasto = document.getElementById('btnSalvarGasto');
+    const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
     if (btnSalvarGanho) {
         btnSalvarGanho.addEventListener('click', () => salvarRegistro('ganho'));
     } else {
@@ -206,6 +207,12 @@ function configurarEventos() {
         btnSalvarGasto.addEventListener('click', () => salvarRegistro('gasto'));
     } else {
         console.warn('[financeiro.js] Botão #btnSalvarGasto não encontrado.');
+    }
+
+    if (btnCancelarEdicao) {
+        btnCancelarEdicao.addEventListener('click', cancelarEdicao);
+    } else {
+        console.warn('[financeiro.js] Botão #btnCancelarEdicao não encontrado.');
     }
 
     if (semanaConsulta) {
@@ -331,10 +338,11 @@ function salvarRegistro(tipo) {
     const btnSalvarGasto = document.getElementById('btnSalvarGasto');
     const descricaoInput = document.getElementById('descricaoRegistro');
     const valorInput = document.getElementById('valorRegistro');
+    const indiceEdicaoInput = document.getElementById('indiceEdicao');
     const descricaoFeedback = document.getElementById('descricaoRegistroFeedback');
     const valorFeedback = document.getElementById('valorRegistroFeedback');
 
-    if (!descricaoInput || !valorInput || !descricaoFeedback || !valorFeedback) {
+    if (!descricaoInput || !valorInput || !indiceEdicaoInput || !descricaoFeedback || !valorFeedback) {
         console.error('[financeiro.js] Elementos de registro não encontrados.');
         return;
     }
@@ -345,6 +353,7 @@ function salvarRegistro(tipo) {
 
     const descricao = descricaoInput.value.trim();
     const valor = parseFloat(valorInput.value);
+    const indiceEdicao = indiceEdicaoInput.value;
 
     descricaoFeedback.textContent = '';
     valorFeedback.textContent = '';
@@ -371,26 +380,46 @@ function salvarRegistro(tipo) {
         return;
     }
 
-    const novoRegistro = {
-        tipo,
-        descricao,
-        valor,
-        data: new Date().toISOString()
-    };
-
     try {
         limparDadosAntigos();
         let registros = decompressData(localStorage.getItem('registros') || compressData([]));
-        registros.push(novoRegistro);
+        
+        if (indiceEdicao !== '') {
+            // Modo edição: atualizar registro existente
+            const indice = parseInt(indiceEdicao);
+            if (indice >= 0 && indice < registros.length) {
+                registros[indice] = {
+                    tipo,
+                    descricao,
+                    valor,
+                    data: registros[indice].data // Manter a data original
+                };
+                cancelarEdicao(); // Resetar formulário após edição
+                showToast('Registro atualizado!', 'success');
+                console.log('[financeiro.js] Registro atualizado:', registros[indice]);
+            } else {
+                throw new Error('Índice de edição inválido.');
+            }
+        } else {
+            // Modo adição: novo registro
+            const novoRegistro = {
+                tipo,
+                descricao,
+                valor,
+                data: new Date().toISOString()
+            };
+            registros.push(novoRegistro);
+            console.log('[financeiro.js] Novo registro salvo:', novoRegistro);
+        }
+
         if (registros.length > MAX_REGISTROS) registros = registros.slice(-MAX_REGISTROS);
         if (checkStorageAvailability({ registros })) {
             localStorage.setItem('registros', compressData(registros));
             descricaoInput.value = '';
             valorInput.value = '';
             descricaoFeedback.className = 'form-text text-success';
-            descricaoFeedback.textContent = 'Registro salvo com sucesso!';
-            showToast(`${tipo === 'gasto' ? 'Gasto' : 'Ganho'} registrado!`, 'success');
-            console.log('[financeiro.js] Registro salvo:', novoRegistro);
+            descricaoFeedback.textContent = indiceEdicao !== '' ? 'Registro atualizado com sucesso!' : 'Registro salvo com sucesso!';
+            showToast(indiceEdicao !== '' ? 'Registro atualizado!' : `${tipo === 'gasto' ? 'Gasto' : 'Ganho'} registrado!`, 'success');
             carregarRegistros();
         } else {
             throw new Error('Espaço insuficiente no localStorage.');
@@ -403,6 +432,89 @@ function salvarRegistro(tipo) {
     } finally {
         if (btnSalvarGanho) btnSalvarGanho.disabled = false;
         if (btnSalvarGasto) btnSalvarGasto.disabled = false;
+    }
+}
+
+function editarRegistro(indice) {
+    const registros = decompressData(localStorage.getItem('registros') || compressData([]));
+    if (indice < 0 || indice >= registros.length) {
+        showToast('Registro inválido.', 'error');
+        console.error('[financeiro.js] Índice de edição inválido:', indice);
+        return;
+    }
+
+    const registro = registros[indice];
+    const descricaoInput = document.getElementById('descricaoRegistro');
+    const valorInput = document.getElementById('valorRegistro');
+    const indiceEdicaoInput = document.getElementById('indiceEdicao');
+    const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
+    const btnSalvarGanho = document.getElementById('btnSalvarGanho');
+    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
+    const tituloRegistro = document.getElementById('tituloRegistro');
+
+    if (!descricaoInput || !valorInput || !indiceEdicaoInput || !btnCancelarEdicao || !btnSalvarGanho || !btnSalvarGasto || !tituloRegistro) {
+        console.error('[financeiro.js] Elementos do formulário não encontrados.');
+        return;
+    }
+
+    descricaoInput.value = registro.descricao;
+    valorInput.value = registro.valor.toFixed(2);
+    indiceEdicaoInput.value = indice;
+    btnCancelarEdicao.style.display = 'inline-block';
+    btnSalvarGanho.textContent = registro.tipo === 'ganho' ? 'Salvar Alterações' : 'Adicionar Ganho';
+    btnSalvarGasto.textContent = registro.tipo === 'gasto' ? 'Salvar Alterações' : 'Adicionar Gasto';
+    tituloRegistro.textContent = 'Editar Registro';
+    console.log('[financeiro.js] Editando registro:', registro);
+}
+
+function cancelarEdicao() {
+    const descricaoInput = document.getElementById('descricaoRegistro');
+    const valorInput = document.getElementById('valorRegistro');
+    const indiceEdicaoInput = document.getElementById('indiceEdicao');
+    const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
+    const btnSalvarGanho = document.getElementById('btnSalvarGanho');
+    const btnSalvarGasto = document.getElementById('btnSalvarGasto');
+    const descricaoFeedback = document.getElementById('descricaoRegistroFeedback');
+    const valorFeedback = document.getElementById('valorRegistroFeedback');
+    const tituloRegistro = document.getElementById('tituloRegistro');
+
+    if (!descricaoInput || !valorInput || !indiceEdicaoInput || !btnCancelarEdicao || !btnSalvarGanho || !btnSalvarGasto || !descricaoFeedback || !valorFeedback || !tituloRegistro) {
+        console.error('[financeiro.js] Elementos do formulário não encontrados.');
+        return;
+    }
+
+    descricaoInput.value = '';
+    valorInput.value = '';
+    indiceEdicaoInput.value = '';
+    btnCancelarEdicao.style.display = 'none';
+    btnSalvarGanho.textContent = 'Adicionar Ganho';
+    btnSalvarGasto.textContent = 'Adicionar Gasto';
+    descricaoFeedback.textContent = '';
+    valorFeedback.textContent = '';
+    tituloRegistro.textContent = 'Adicionar Registro';
+    console.log('[financeiro.js] Edição cancelada.');
+}
+
+function removerRegistro(indice) {
+    if (!confirm('Deseja remover este registro?')) return;
+
+    try {
+        let registros = decompressData(localStorage.getItem('registros') || compressData([]));
+        if (indice < 0 || indice >= registros.length) {
+            throw new Error('Índice inválido.');
+        }
+        registros.splice(indice, 1);
+        if (checkStorageAvailability({ registros })) {
+            localStorage.setItem('registros', compressData(registros));
+            showToast('Registro removido!', 'success');
+            console.log('[financeiro.js] Registro removido, índice:', indice);
+            carregarRegistros();
+        } else {
+            throw new Error('Espaço insuficiente no localStorage.');
+        }
+    } catch (e) {
+        showToast('Erro ao remover registro. Armazenamento cheio.', 'error');
+        console.error('[financeiro.js] Erro ao remover registro:', e);
     }
 }
 
@@ -436,16 +548,16 @@ function carregarRegistros() {
         // Agrupar registros por descrição
         const registrosAgrupados = {};
         registrosFiltrados.forEach((registro, index) => {
-            const { descricao, tipo, valor } = registro;
+            const { descricao, tipo, valor, data } = registro;
             if (!registrosAgrupados[descricao]) {
-                registrosAgrupados[descricao] = { gastos: 0, ganhos: 0, indices: [] };
+                registrosAgrupados[descricao] = { gastos: 0, ganhos: 0, registros: [] };
             }
             if (tipo === 'gasto') {
                 registrosAgrupados[descricao].gastos += valor;
             } else {
                 registrosAgrupados[descricao].ganhos += valor;
             }
-            registrosAgrupados[descricao].indices.push(index);
+            registrosAgrupados[descricao].registros.push({ ...registro, index });
         });
 
         listaRegistros.innerHTML = '';
@@ -454,18 +566,33 @@ function carregarRegistros() {
 
         Object.keys(registrosAgrupados).sort().forEach(descricao => {
             const grupo = registrosAgrupados[descricao];
-            const li = document.createElement('li');
-            li.className = 'list-group-item';
+            const liGrupo = document.createElement('li');
+            liGrupo.className = 'list-group-item';
             let htmlContent = `<strong>${descricao}</strong><br>`;
             if (grupo.ganhos > 0) {
-                htmlContent += `Ganhos: R$ ${grupo.ganhos.toFixed(2)}<br>`;
+                htmlContent += `Total de Ganhos: R$ ${grupo.ganhos.toFixed(2)}<br>`;
             }
             if (grupo.gastos > 0) {
-                htmlContent += `Gastos: R$ ${grupo.gastos.toFixed(2)}<br>`;
+                htmlContent += `Total de Gastos: R$ ${grupo.gastos.toFixed(2)}<br>`;
             }
-            htmlContent += `<button class="btn btn-danger btn-sm" onclick="removerRegistrosAgrupados('${descricao}')" aria-label="Remover todos os registros com descrição ${descricao}">×</button>`;
-            li.innerHTML = htmlContent;
-            listaRegistros.appendChild(li);
+            htmlContent += `<button class="btn btn-danger btn-sm" onclick="removerRegistrosAgrupados('${descricao}')" aria-label="Remover todos os registros com descrição ${descricao}">Remover Todos</button>`;
+            htmlContent += `<ul class="list-group mt-2">`;
+            
+            grupo.registros.forEach(reg => {
+                const dataFormatada = new Date(reg.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                htmlContent += `
+                    <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" style="font-size: 0.9em;">
+                        <span>${reg.tipo === 'ganho' ? 'Ganho' : 'Gasto'}: R$ ${reg.valor.toFixed(2)} (${dataFormatada})</span>
+                        <div>
+                            <button class="btn btn-primary btn-sm mr-1" onclick="editarRegistro(${reg.index})" aria-label="Editar registro de ${reg.tipo} com descrição ${reg.descricao} e valor ${reg.valor.toFixed(2)}">✏️</button>
+                            <button class="btn btn-danger btn-sm" onclick="removerRegistro(${reg.index})" aria-label="Remover registro de ${reg.tipo} com descrição ${reg.descricao} e valor ${reg.valor.toFixed(2)}">×</button>
+                        </div>
+                    </li>`;
+            });
+            
+            htmlContent += `</ul>`;
+            liGrupo.innerHTML = htmlContent;
+            listaRegistros.appendChild(liGrupo);
 
             totalGastosValue += grupo.gastos;
             totalGanhosValue += grupo.ganhos;

@@ -211,6 +211,11 @@ h1 {
     background: var(--btn-danger-hover);
 }
 
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 14px;
+}
+
 .list-group {
     margin-bottom: 20px;
 }
@@ -227,6 +232,20 @@ h1 {
 
 .list-group-item:hover {
     background: var(--input-bg);
+}
+
+.list-group-item-action {
+    cursor: pointer;
+}
+
+.list-group-item .d-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.list-group-item .mr-1 {
+    margin-right: 5px;
 }
 
 .loading {
@@ -326,6 +345,48 @@ h1 {
     color: var(--btn-primary-bg);
 }
 
+.install-prompt {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--btn-primary-bg);
+    color: var(--tab-active-text);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    max-width: 90%;
+    text-align: center;
+}
+
+.install-prompt button {
+    background-color: var(--container-bg);
+    color: var(--btn-primary-bg);
+    border: none;
+    padding: 8px 16px;
+    margin: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.install-prompt button:hover {
+    background-color: var(--input-bg);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
 @media (max-width: 600px) {
     .container {
         padding: 15px;
@@ -359,5 +420,14 @@ h1 {
 
     .form-row .form-group {
         min-width: 100%;
+    }
+
+    .list-group-item .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .list-group-item .d-flex div {
+        margin-top: 10px;
     }
 }
