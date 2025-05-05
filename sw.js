@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motoca-br-v1.1';
+const CACHE_NAME = 'motoca-br-v2.1';
 const FILES_TO_CACHE = [
     '/',
     '/index.html',

@@ -51,7 +51,7 @@
     <meta http-equiv="Expires" content="0">
     <title>Motoca BR</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
-    <link rel="stylesheet" href="style.css?v=1.1">
+    <link rel="stylesheet" href="style.css?v=2.1">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="img/icon-192x192.png" type="image/png">
 </head>
@@ -214,10 +214,10 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-    <script src="mapa.js?v=1.1"></script>
-    <script src="script.js?v=1.1"></script>
-    <script src="frete.js?v=1.1"></script>
-    <script src="financeiro.js?v=1.1"></script>
+    <script src="mapa.js?v=2.1"></script>
+    <script src="script.js?v=2.1"></script>
+    <script src="frete.js?v=2.1"></script>
+    <script src="financeiro.js?v=2.1"></script>
     <script>
     function openTab(evt, tabName) {
         const tabcontent = document.getElementsByClassName('tabcontent');
@@ -249,7 +249,7 @@
     if ('serviceWorker' in navigator) {
         if (location.protocol === 'http:' || location.protocol === 'https:') {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/MotocaBR/sw.js')
+                navigator.serviceWorker.register('/MotocaBR/sw.js?v=2.1')
                     .then(reg => {
                         console.log('Service Worker registrado com sucesso:', reg);
                         reg.onupdatefound = () => {
@@ -257,7 +257,7 @@
                             installingWorker.onstatechange = () => {
                                 if (installingWorker.state === 'installed') {
                                     if (navigator.serviceWorker.controller) {
-                                        if (confirm('Uma nova versão do Motoca BR está disponível. Deseja atualizar agora?')) {
+                                        if (confirm('Nova versão do Motoca BR disponível! Recarregue para atualizar.')) {
                                             window.location.reload();
                                         }
                                     }
