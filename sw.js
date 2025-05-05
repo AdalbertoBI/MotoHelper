@@ -1,18 +1,18 @@
-const CACHE_NAME = 'motoca-br-v2.1';
+const CACHE_NAME = 'motoca-br-v2.2';
 const FILES_TO_CACHE = [
     '/',
     '/index.html',
-    '/style.css?v=2.1',
-    '/mapa.js?v=2.1',
-    '/script.js?v=2.1',
-    '/frete.js?v=2.1',
-    '/financeiro.js?v=2.1',
+    '/style.css?v=2.2',
+    '/mapa.js?v=2.2',
+    '/script.js?v=2.2',
+    '/frete.js?v=2.2',
+    '/financeiro.js?v=2.2',
     '/manifest.json',
     '/img/icon-192x192.png'
 ];
 
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Instalando versão 2.1');
+    console.log('[Service Worker] Instalando versão 2.2');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -24,7 +24,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Ativando versão 2.1');
+    console.log('[Service Worker] Ativando versão 2.2');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
