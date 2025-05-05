@@ -1,4 +1,3 @@
-// Versão 2.1
 const MAX_REGISTROS = 200;
 const STORAGE_EXPIRATION_DAYS = 90;
 
@@ -224,7 +223,7 @@ function configurarEventos() {
 }
 
 function carregarConfiguracoes() {
-    const km evolPorLitroInput = document.getElementById('kmPorLitro');
+    const kmPorLitroInput = document.getElementById('kmPorLitro');
     const precoPorLitroInput = document.getElementById('precoPorLitro');
     
     if (kmPorLitroInput) {
