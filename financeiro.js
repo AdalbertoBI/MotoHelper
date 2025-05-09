@@ -139,11 +139,9 @@ function limparDadosAntigos() {
 }
 
 function getWeekNumber(d) {
-    // Ajusta a data para garantir que a semana comece na segunda-feira
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    // Define o primeiro dia da semana como segunda-feira (1)
-    const day = (d.getUTCDay() + 6) % 7; // Ajusta: domingo=0 -> 6, segunda=1 -> 0
-    d.setUTCDate(d.getUTCDate() - day + 3); // Move para a quinta-feira da semana para cálculo correto
+    const day = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - day + 3);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     return weekNo;
@@ -350,7 +348,6 @@ function salvarRegistro(tipo) {
         return;
     }
 
-    // Desabilitar botões para evitar múltiplos cliques
     if (btnSalvarGanho) btnSalvarGanho.disabled = true;
     if (btnSalvarGasto) btnSalvarGasto.disabled = true;
 
@@ -388,23 +385,21 @@ function salvarRegistro(tipo) {
         let registros = decompressData(localStorage.getItem('registros') || compressData([]));
         
         if (indiceEdicao !== '') {
-            // Modo edição: atualizar registro existente
             const indice = parseInt(indiceEdicao);
             if (indice >= 0 && indice < registros.length) {
                 registros[indice] = {
                     tipo,
                     descricao,
                     valor,
-                    data: registros[indice].data // Manter a data original
+                    data: registros[indice].data
                 };
-                cancelarEdicao(); // Resetar formulário após edição
+                cancelarEdicao();
                 showToast('Registro atualizado!', 'success');
                 console.log('[financeiro.js] Registro atualizado:', registros[indice]);
             } else {
                 throw new Error('Índice de edição inválido.');
             }
         } else {
-            // Modo adição: novo registro
             const novoRegistro = {
                 tipo,
                 descricao,
@@ -439,10 +434,12 @@ function salvarRegistro(tipo) {
 }
 
 function editarRegistro(indice) {
+    console.log('[financeiro.js] Tentando editar registro com índice:', indice);
     const registros = decompressData(localStorage.getItem('registros') || compressData([]));
-    if (indice < 0 || indice >= registros.length) {
-        showToast('Registro inválido.', 'error');
-        console.error('[financeiro.js] Índice de edição inválido:', indice);
+    
+    if (indice < 0 || indice >= registros.length || !registros[indice]) {
+        showToast('Erro: Registro não encontrado.', 'error');
+        console.error('[financeiro.js] Índice de edição inválido ou registro não existe:', indice, 'Total de registros:', registros.length);
         return;
     }
 
@@ -456,18 +453,24 @@ function editarRegistro(indice) {
     const tituloRegistro = document.getElementById('tituloRegistro');
 
     if (!descricaoInput || !valorInput || !indiceEdicaoInput || !btnCancelarEdicao || !btnSalvarGanho || !btnSalvarGasto || !tituloRegistro) {
+        showToast('Erro: Elementos do formulário não encontrados.', 'error');
         console.error('[financeiro.js] Elementos do formulário não encontrados.');
         return;
     }
 
-    descricaoInput.value = registro.descricao;
-    valorInput.value = registro.valor.toFixed(2);
-    indiceEdicaoInput.value = indice;
-    btnCancelarEdicao.style.display = 'inline-block';
-    btnSalvarGanho.textContent = registro.tipo === 'ganho' ? 'Salvar Alterações' : 'Adicionar Ganho';
-    btnSalvarGasto.textContent = registro.tipo === 'gasto' ? 'Salvar Alterações' : 'Adicionar Gasto';
-    tituloRegistro.textContent = 'Editar Registro';
-    console.log('[financeiro.js] Editando registro:', registro);
+    try {
+        descricaoInput.value = registro.descricao || '';
+        valorInput.value = registro.valor ? registro.valor.toFixed(2) : '';
+        indiceEdicaoInput.value = indice.toString();
+        btnCancelarEdicao.style.display = 'inline-block';
+        btnSalvarGanho.textContent = registro.tipo === 'ganho' ? 'Salvar Alterações' : 'Adicionar Ganho';
+        btnSalvarGasto.textContent = registro.tipo === 'gasto' ? 'Salvar Alterações' : 'Adicionar Gasto';
+        tituloRegistro.textContent = 'Editar Registro';
+        console.log('[financeiro.js] Registro carregado para edição:', registro);
+    } catch (e) {
+        showToast('Erro ao carregar registro para edição.', 'error');
+        console.error('[financeiro.js] Erro ao preparar edição:', e);
+    }
 }
 
 function cancelarEdicao() {
@@ -536,37 +539,42 @@ function carregarRegistros() {
     try {
         const registros = decompressData(localStorage.getItem('registros') || compressData([]));
         const semanaSelecionada = semanaConsulta.value;
-        let registrosFiltrados = registros;
+        let registrosFiltrados = [];
+        const indicesOriginais = new Map(); // Mapa para armazenar índices originais
 
         if (semanaSelecionada) {
             const [ano, semana] = semanaSelecionada.split('-').map(Number);
-            registrosFiltrados = registros.filter(registro => {
+            registros.forEach((registro, index) => {
                 const data = new Date(registro.data);
                 const anoRegistro = data.getUTCFullYear();
                 const semanaRegistro = getWeekNumber(data);
                 const isSameWeek = anoRegistro === ano && semanaRegistro === semana;
+                if (isSameWeek) {
+                    registrosFiltrados.push(registro);
+                    indicesOriginais.set(registrosFiltrados.length - 1, index); // Mapear índice filtrado para original
+                }
                 console.log(`[financeiro.js] Filtrando registro: Data=${data.toISOString()}, Ano=${anoRegistro}, Semana=${semanaRegistro}, Selecionado=${semanaSelecionada}, Incluído=${isSameWeek}`);
-                return isSameWeek;
             });
         } else {
-            // Filtrar pela semana atual (segunda a domingo)
             const hoje = new Date();
             const anoAtual = hoje.getUTCFullYear();
             const semanaAtual = getWeekNumber(hoje);
-            registrosFiltrados = registros.filter(registro => {
+            registros.forEach((registro, index) => {
                 const data = new Date(registro.data);
                 const anoRegistro = data.getUTCFullYear();
                 const semanaRegistro = getWeekNumber(data);
                 const isCurrentWeek = anoRegistro === anoAtual && semanaRegistro === semanaAtual;
+                if (isCurrentWeek) {
+                    registrosFiltrados.push(registro);
+                    indicesOriginais.set(registrosFiltrados.length - 1, index); // Mapear índice filtrado para original
+                }
                 console.log(`[financeiro.js] Filtrando semana atual: Data=${data.toISOString()}, Ano=${anoRegistro}, Semana=${semanaRegistro}, Atual=${anoAtual}-${semanaAtual}, Incluído=${isCurrentWeek}`);
-                return isCurrentWeek;
             });
         }
 
-        // Agrupar registros por descrição
         const registrosAgrupados = {};
-        registrosFiltrados.forEach((registro, index) => {
-            const { descricao, tipo, valor, data } = registro;
+        registrosFiltrados.forEach((registro, filteredIndex) => {
+            const { descricao, tipo, valor } = registro;
             if (!registrosAgrupados[descricao]) {
                 registrosAgrupados[descricao] = { gastos: 0, ganhos: 0, registros: [] };
             }
@@ -575,7 +583,10 @@ function carregarRegistros() {
             } else {
                 registrosAgrupados[descricao].ganhos += valor;
             }
-            registrosAgrupados[descricao].registros.push({ ...registro, index: registros.indexOf(registro) });
+            registrosAgrupados[descricao].registros.push({
+                ...registro,
+                index: indicesOriginais.get(filteredIndex) // Usar índice original
+            });
         });
 
         listaRegistros.innerHTML = '';
