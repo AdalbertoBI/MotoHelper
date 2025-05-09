@@ -139,8 +139,11 @@ function limparDadosAntigos() {
 }
 
 function getWeekNumber(d) {
+    // Ajusta a data para garantir que a semana comece na segunda-feira
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    // Define o primeiro dia da semana como segunda-feira (1)
+    const day = (d.getUTCDay() + 6) % 7; // Ajusta: domingo=0 -> 6, segunda=1 -> 0
+    d.setUTCDate(d.getUTCDate() - day + 3); // Move para a quinta-feira da semana para cálculo correto
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     return weekNo;
@@ -539,9 +542,24 @@ function carregarRegistros() {
             const [ano, semana] = semanaSelecionada.split('-').map(Number);
             registrosFiltrados = registros.filter(registro => {
                 const data = new Date(registro.data);
-                const anoRegistro = data.getFullYear();
+                const anoRegistro = data.getUTCFullYear();
                 const semanaRegistro = getWeekNumber(data);
-                return anoRegistro === ano && semanaRegistro === semana;
+                const isSameWeek = anoRegistro === ano && semanaRegistro === semana;
+                console.log(`[financeiro.js] Filtrando registro: Data=${data.toISOString()}, Ano=${anoRegistro}, Semana=${semanaRegistro}, Selecionado=${semanaSelecionada}, Incluído=${isSameWeek}`);
+                return isSameWeek;
+            });
+        } else {
+            // Filtrar pela semana atual (segunda a domingo)
+            const hoje = new Date();
+            const anoAtual = hoje.getUTCFullYear();
+            const semanaAtual = getWeekNumber(hoje);
+            registrosFiltrados = registros.filter(registro => {
+                const data = new Date(registro.data);
+                const anoRegistro = data.getUTCFullYear();
+                const semanaRegistro = getWeekNumber(data);
+                const isCurrentWeek = anoRegistro === anoAtual && semanaRegistro === semanaAtual;
+                console.log(`[financeiro.js] Filtrando semana atual: Data=${data.toISOString()}, Ano=${anoRegistro}, Semana=${semanaRegistro}, Atual=${anoAtual}-${semanaAtual}, Incluído=${isCurrentWeek}`);
+                return isCurrentWeek;
             });
         }
 
@@ -557,7 +575,7 @@ function carregarRegistros() {
             } else {
                 registrosAgrupados[descricao].ganhos += valor;
             }
-            registrosAgrupados[descricao].registros.push({ ...registro, index });
+            registrosAgrupados[descricao].registros.push({ ...registro, index: registros.indexOf(registro) });
         });
 
         listaRegistros.innerHTML = '';
@@ -643,7 +661,7 @@ function atualizarSemanas() {
         const semanas = new Set();
         registros.forEach(registro => {
             const data = new Date(registro.data);
-            const ano = data.getFullYear();
+            const ano = data.getUTCFullYear();
             const semana = getWeekNumber(data);
             semanas.add(`${ano}-${semana}`);
         });
